@@ -35,7 +35,14 @@
  *         Rafael Pérez Seguí
  */
 
+#include <array>
+#include <memory>
+#include <string>
+#include <iostream>
+
 #include "as2_platform_betaflight/betaflight_platform.hpp"
+#include "msp/msp_msg.hpp"
+
 
 void notImplemented()
 {
@@ -46,302 +53,219 @@ void notImplemented()
 namespace as2_platform_betaflight
 {
 
-BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
-: as2::AerialPlatform(options)
+void BetaflightPlatform::readParameters()
 {
-  configureSensors();
+  this->declare_parameter<std::string>("device");
+  this->declare_parameter<int>("baudrate");
+  this->declare_parameter<bool>("external_odom");
+
+  this->declare_parameter<float>("yaw_rate.min");
+  this->declare_parameter<float>("yaw_rate.max");
+  this->declare_parameter<float>("pitch_rate.min");
+  this->declare_parameter<float>("pitch_rate.max");
+  this->declare_parameter<float>("roll_rate.min");
+  this->declare_parameter<float>("roll_rate.max");
+  this->declare_parameter<float>("thrust.min");
+  this->declare_parameter<float>("thrust.max");
+
 
   base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
   odom_frame_id_ = as2::tf::generateTfName(this, "odom");
 
-  this->declare_parameter<float>("max_thrust");
-  max_thrust_ = this->get_parameter("max_thrust").as_double();
-
-  this->declare_parameter<float>("min_thrust");
-  min_thrust_ = this->get_parameter("min_thrust").as_double();
-
-  this->declare_parameter<bool>("external_odom");
+  device_ = this->get_parameter("device").as_string();
+  baudrate_ = this->get_parameter("baudrate").as_int();
   external_odom_ = this->get_parameter("external_odom").as_bool();
 
-  RCLCPP_INFO(this->get_logger(), "Max thrust: %f", max_thrust_);
-  RCLCPP_INFO(this->get_logger(), "Min thrust: %f", min_thrust_);
+  max_thrust_ = this->get_parameter("thrust.max").as_double();
+  min_thrust_ = this->get_parameter("thrust.min").as_double();
+  max_pitch_rate_ = this->get_parameter("pitch_rate.max").as_double();
+  min_pitch_rate_ = this->get_parameter("pitch_rate.min").as_double();
+  max_roll_rate_ = this->get_parameter("roll_rate.max").as_double();
+  min_roll_rate_ = this->get_parameter("roll_rate.min").as_double();
+  max_yaw_rate_ = this->get_parameter("yaw_rate.max").as_double();
+  min_yaw_rate_ = this->get_parameter("yaw_rate.min").as_double();
+
+
+  RCLCPP_INFO(this->get_logger(), "Device: %s", device_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Baudrate: %d", baudrate_);
+  RCLCPP_INFO(this->get_logger(), "External odometry mode: %s", external_odom_ ? "true" : "false");
   RCLCPP_INFO(
     this->get_logger(), "Simulation mode: %s",
     this->get_parameter("use_sim_time").as_bool() ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "External odometry mode: %s", external_odom_ ? "true" : "false");
+  RCLCPP_INFO(this->get_logger(), "Thrust bounds: [%f, %f]", min_thrust_, max_thrust_);
+  RCLCPP_INFO(this->get_logger(), "Pitch rate bounds: [%f, %f]", min_pitch_rate_, max_pitch_rate_);
+  RCLCPP_INFO(this->get_logger(), "Roll rate bounds: [%f, %f]", min_roll_rate_, max_roll_rate_);
+  RCLCPP_INFO(this->get_logger(), "Yaw rate bounds: [%f, %f]", min_yaw_rate_, max_yaw_rate_);
+  computeControlSlopes();
+}
 
-  // declare betaflight_ subscribers
 
-  betaflight_state_sub_ = this->create_subscription<mavros_msgs::msg::State>(
-    "mavros/state", rclcpp::SensorDataQoS(),
-    std::bind(&BetaflightPlatform::betaflightStateCb, this, std::placeholders::_1));
+BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
+: as2::AerialPlatform(options)
+{
+  readParameters();
+  configureSensors();
+  initChannels();
 
-  betaflight_odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-    "mavros/local_position/odom", rclcpp::SensorDataQoS(),
-    [&](const nav_msgs::msg::Odometry::SharedPtr msg) {
-      msg->child_frame_id = base_link_frame_id_;
-      msg->header.frame_id = odom_frame_id_;
-      this->odometry_raw_estimation_ptr_->updateData(*msg);
-    });
-
-  // declare betaflight services
-
-  betaflight_arm_client_ =
-    std::make_shared<as2::SynchronousServiceClient<mavros_msgs::srv::CommandBool>>(
-    "mavros/cmd/arming", this);
-  betaflight_set_mode_client_ =
-    std::make_shared<as2::SynchronousServiceClient<mavros_msgs::srv::SetMode>>(
-    "mavros/set_mode", this);
-
-  tf_handler_ = std::make_shared<as2::tf::TfHandler>(this);
-
-  if (external_odom_) {
-    betaflight_vision_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
-      "mavros/vision_pose/pose", 10);
-    betaflight_vision_speed_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
-      "mavros/vision_speed/speed_twist", 10);
-
-    // In real flights, the odometry is published by the onboard computer.
-    external_odometry_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
-      this->generate_global_name(as2_names::topics::self_localization::twist),
-      as2_names::topics::self_localization::qos,
-      std::bind(&BetaflightPlatform::externalOdomCb, this, std::placeholders::_1));
-
-    static auto px4_publish_vo_timer = this->create_wall_timer(
-      std::chrono::milliseconds(10), [this]() {this->betaflight_publishVisualOdometry();});
+  auto out = fcu_.connect(device_, baudrate_, 0.0, true);
+  if (!out) {
+    RCLCPP_ERROR(this->get_logger(), "Could not connect to device %s", device_.c_str());
+    throw std::runtime_error("Could not connect to device");
   }
+  fcu_.setLoggingLevel(msp::client::LoggingLevel::INFO);
+  fcu_.setControlSource(fcu::ControlSource::MSP);
 
-  // declare betaflight_ publishers
-
-  betaflight_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
-    "mavros/setpoint_position/local", 10);
-  betaflight_acro_setpoint_pub_ = this->create_publisher<mavros_msgs::msg::AttitudeTarget>(
-    "mavros/setpoint_raw/attitude", 10);
-  betaflight_twist_setpoint_pub_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
-    "mavros/setpoint_velocity/cmd_vel", 10);
+  fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
+  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.01);
+  fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.1);
+  // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
+  box_names_ = fcu_.getBoxNames();
 }
 
 void BetaflightPlatform::configureSensors()
 {
   imu_sensor_ptr_ = std::make_unique<as2::sensors::Imu>("imu", this);
   battery_sensor_ptr_ = std::make_unique<as2::sensors::Battery>("battery", this);
-  gps_sensor_ptr_ = std::make_unique<as2::sensors::GPS>("gps", this);
+  // gps_sensor_ptr_ = std::make_unique<as2::sensors::GPS>("gps", this);
 
-  odometry_raw_estimation_ptr_ =
-    std::make_unique<as2::sensors::Sensor<nav_msgs::msg::Odometry>>("odom", this);
+  // odometry_raw_estimation_ptr_ =
+  //   std::make_unique<as2::sensors::Sensor<nav_msgs::msg::Odometry>>("odom", this);
 }
 
 bool BetaflightPlatform::ownSetArmingState(bool state)
 {
-  auto request = std::make_shared<mavros_msgs::srv::CommandBool::Request>();
-  auto response = std::make_shared<mavros_msgs::srv::CommandBool::Response>();
-  request->value = state;
-
-  auto result = betaflight_arm_client_->sendRequest(request, response);
-  if (!result) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to arm/disarm the vehicle");
-    return false;
-  }
-  return response->success;
+  // TODO(miferco97): check if this is correct
+  int value = state ? 1 : 0;
+  channel_values_[4] = 1000 + value * 500;
+  return true;
 }
 
 bool BetaflightPlatform::ownSetOffboardControl(bool offboard)
 {
-  // TODO(miferco97): CREATE A DEFAULT CONTROL MODE FOR BEING ABLE TO SWITCH TO OFFBOARD
-  // MODE BEFORE RUNNING THE CONTROLLER
-
-  if (offboard == false) {
-    RCLCPP_ERROR(
-      this->get_logger(),
-      "Turning into MANUAL Mode is not allowed from the onboard computer");
-    return false;
-  }
-
-  RCLCPP_DEBUG(this->get_logger(), "Switching to OFFBOARD mode");
-  auto out = betaflight_callOffboardControlMode();
-  if (!out) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set OFFBOARD mode");
-    return false;
-  }
-  if (!getArmingState()) {
-    this->ownSetArmingState(true);
-  }
+  // TODO(miferco97): check if this is correct
   return true;
 }
 
 bool BetaflightPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode & msg)
 {
-  switch (msg.control_mode) {
-    case as2_msgs::msg::ControlMode::POSITION: {
-        RCLCPP_INFO(this->get_logger(), "POSITION_MODE ENABLED");
-      } break;
-    case as2_msgs::msg::ControlMode::SPEED: {
-        RCLCPP_INFO(this->get_logger(), "SPEED_MODE ENABLED");
-      } break;
-    case as2_msgs::msg::ControlMode::ATTITUDE: {
-        RCLCPP_INFO(this->get_logger(), "ATTITUDE_MODE ENABLED");
-      } break;
-    case as2_msgs::msg::ControlMode::ACRO: {
-        RCLCPP_INFO(this->get_logger(), "ACRO_MODE ENABLED");
-      } break;
-    default: {
-        RCLCPP_WARN(this->get_logger(), "CONTROL MODE %d NOT SUPPORTED", msg.control_mode);
-        has_mode_settled_ = false;
-        return false;
-      }
+  // ONLY SUPPORTS ACRO MODE
+  if (msg.control_mode != as2_msgs::msg::ControlMode::ACRO) {
+    RCLCPP_WARN(this->get_logger(), "CONTROL MODE %d NOT SUPPORTED", msg.control_mode);
+    return false;
   }
-  has_mode_settled_ = true;
   return true;
-}
-
-void BetaflightPlatform::sendCommand()
-{
-  if (!getArmingState() || !getOffboardMode() || !has_mode_settled_) {
-    betaflight_publishRatesSetpoint(0.0, 0.0, 0.0, 1.0 * min_thrust_);
-  }
-  ownSendCommand();
-  return;
 }
 
 bool BetaflightPlatform::ownSendCommand()
 {
-  as2_msgs::msg::ControlMode platform_control_mode = this->getControlMode();
+  // ONLY ACRO MODE IS SUPPORTED
 
-  auto thrust_normalized = this->command_thrust_msg_.thrust / max_thrust_;
-  thrust_normalized = std::clamp<float>(thrust_normalized, min_thrust_, 1.0);
+  double thrust = this->command_thrust_msg_.thrust;
+  double roll = this->command_twist_msg_.twist.angular.x;
+  double pitch = this->command_twist_msg_.twist.angular.y;
+  double yaw = this->command_twist_msg_.twist.angular.z;
 
-  // Switch case to set setpoint
-  switch (platform_control_mode.control_mode) {
-    case as2_msgs::msg::ControlMode::POSITION: {
-        if (platform_control_mode.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE) {
-          betaflight_publishPoseSetpoint(this->command_pose_msg_);
-        } else {
-          RCLCPP_WARN(
-            this->get_logger(),
-            "NOT IMPLEMENTED FOR POSITION WITH YAW_RATE SETPOINT, sending  yaw 0.0");
-          command_pose_msg_.pose.orientation = tf2::toMsg(tf2::Quaternion(0, 0, 0, 1));
-          betaflight_publishPoseSetpoint(this->command_pose_msg_);
-        }
-      } break;
-    case as2_msgs::msg::ControlMode::SPEED: {
-        if (platform_control_mode.yaw_mode == as2_msgs::msg::ControlMode::YAW_ANGLE) {
-          RCLCPP_WARN(this->get_logger(), "NOT IMPLEMENTED FOR SPEED WITH YAW_ANGLE SETPOINT");
-          this->command_twist_msg_.twist.angular.z = 0.0;
-          betaflight_publishTwistSetpoint(this->command_twist_msg_);
-        } else {
-          betaflight_publishTwistSetpoint(this->command_twist_msg_);
-        }
-      } break;
-    case as2_msgs::msg::ControlMode::ATTITUDE: {
-        betaflight_publishAttitudeSetpoint(
-          this->command_pose_msg_.pose.orientation,
-          thrust_normalized);
-      } break;
-    case as2_msgs::msg::ControlMode::ACRO: {
-        betaflight_publishRatesSetpoint(
-          this->command_twist_msg_.twist.angular.x,
-          this->command_twist_msg_.twist.angular.y,
-          this->command_twist_msg_.twist.angular.z,
-          thrust_normalized);
-      } break;
-    default:
-      return false;
+  // saturate thrust
+  thrust = std::clamp(thrust, min_thrust_, max_thrust_);
+  roll = std::clamp(roll, min_roll_rate_, max_roll_rate_);
+  pitch = std::clamp(pitch, min_pitch_rate_, max_pitch_rate_);
+  yaw = std::clamp(yaw, min_yaw_rate_, max_yaw_rate_);
+
+  // convert to pulse width
+  uint16_t roll_pulse = static_cast<uint16_t>(1500 + roll / roll_slope_);
+  uint16_t pitch_pulse = static_cast<uint16_t>(1500 + pitch / pitch_slope_);
+  uint16_t yaw_pulse = static_cast<uint16_t>(1500 + yaw / roll_slope_);
+
+  // thrust we must use thrust map to convert to pulse width
+  // TODO(miferco97): implement thrust map
+  uint16_t thrust_pulse = static_cast<uint16_t>(1000 + thrust / max_thrust_ * 1000);
+
+  // set the values
+
+  channel_values_[0] = roll_pulse;
+  channel_values_[1] = pitch_pulse;
+  channel_values_[2] = yaw_pulse;
+  channel_values_[3] = thrust_pulse;
+
+  // print the values for debugging
+  std::cout << "Channel values: ";
+  for (auto & value : channel_values_) {
+    std::cout << value << " ";
+  }
+  std::cout << std::endl;
+
+  bool out = fcu_.setRc(channel_values_);
+  if (!out) {
+    RCLCPP_ERROR(this->get_logger(), "Could not send command to flight controller");
+    return false;
   }
   return true;
 }
+
 void BetaflightPlatform::ownKillSwitch()
 {
-  RCLCPP_ERROR(this->get_logger(), "KILL SWITCH TRIGGERED");
-  // MAV_CMD_COMPONENT_ARM_DISARM
-  auto out = betaflight_callVehicleCommand(400, 0.0, 21196.0);
-  if (!out) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to kill the vehicle");
-    return;
-  }
+  notImplemented();
 }
 
 void BetaflightPlatform::ownStopPlatform() {RCLCPP_WARN(this->get_logger(), "NOT IMPLEMENTED");}
 
-void BetaflightPlatform::externalOdomCb(
-  const geometry_msgs::msg::TwistStamped::SharedPtr _twist_msg)
+void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 {
-  RCLCPP_DEBUG(this->get_logger(), "External odometry received");
-  try {
-    auto [pose_msg, twist_msg] = tf_handler_->getState(
-      *_twist_msg, base_link_frame_id_,
-      odom_frame_id_, base_link_frame_id_);
-
-    betaflight_vision_speed_msg_.header.stamp = twist_msg.header.stamp;
-    betaflight_vision_speed_msg_.header.frame_id = twist_msg.header.frame_id;   // BODY_FRAME_FLU
-    betaflight_vision_speed_msg_.twist = twist_msg.twist;
-
-    betaflight_vision_pose_msg_.header.stamp = pose_msg.header.stamp;
-    betaflight_vision_pose_msg_.header.frame_id = pose_msg.header.frame_id;   // LOCAL_FRAME_FLU
-    betaflight_vision_pose_msg_.pose = pose_msg.pose;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN(this->get_logger(), "Could not get transform: %s", ex.what());
+  if (!status.isHealthy()) {
+    RCLCPP_WARN(this->get_logger(), "Flight controller is not healthy");
   }
-  return;
 }
 
-/** -----------------------------------------------------------------*/
-/** ------------------------- betaflight_ FUNCTIONS -------------------------*/
-/** -----------------------------------------------------------------*/
-
-// /**
-//  * @brief Publish the offboard control mode.
-//  *
-//  */
-bool BetaflightPlatform::betaflight_callOffboardControlMode()
+void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 {
-  auto request = std::make_shared<mavros_msgs::srv::SetMode::Request>();
-  auto response = std::make_shared<mavros_msgs::srv::SetMode::Response>();
-  request->custom_mode = "OFFBOARD";
-  auto result = betaflight_set_mode_client_->sendRequest(request, response);
-  if (!result) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set OFFBOARD mode");
-    return false;
-  }
-  return response->mode_sent;
+  const msp::msg::ImuSI imu_si(imu, 512.0, 1.0 / 4.096, 0.092, 9.80665);
+
+  std_msgs::msg::Header hdr;
+  hdr.stamp = this->get_clock()->now();
+  hdr.frame_id = base_link_frame_id_;
+
+  // raw imu data without orientation
+  sensor_msgs::msg::Imu imu_msg;
+  imu_msg.header = hdr;
+  imu_msg.linear_acceleration.x = imu_si.acc[0];
+  imu_msg.linear_acceleration.y = imu_si.acc[1];
+  imu_msg.linear_acceleration.z = imu_si.acc[2];
+  imu_msg.angular_velocity.x = imu_si.gyro[0] / 180.0 * M_PI;
+  imu_msg.angular_velocity.y = imu_si.gyro[1] / 180.0 * M_PI;
+  imu_msg.angular_velocity.z = imu_si.gyro[2] / 180.0 * M_PI;
+
+  // magnetic field vector
+  // sensor_msgs::msg::MagneticField mag_msg;
+  // mag_msg.header = hdr;
+  // mag_msg.magnetic_field.x = imu_si.mag[0] * 1e-6;
+  // mag_msg.magnetic_field.y = imu_si.mag[1] * 1e-6;
+  // mag_msg.magnetic_field.z = imu_si.mag[2] * 1e-6;
+
+  imu_sensor_ptr_->updateAndPublish(imu_msg);
 }
 
-void BetaflightPlatform::betaflight_publishRatesSetpoint(
-  double droll, double dpitch, double dyaw,
-  double dthrust)
+// void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
+// {
+//   std::cout << "Altitude: " << altitude << std::endl;
+// }
+
+void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  auto msg = mavros_msgs::msg::AttitudeTarget();
-  msg.header.stamp = this->get_clock()->now();
-  msg.type_mask = mavros_msgs::msg::AttitudeTarget::IGNORE_ATTITUDE;
-  msg.body_rate.x = droll;
-  msg.body_rate.y = dpitch;
-  msg.body_rate.z = dyaw;
-  msg.thrust = dthrust;
-  betaflight_acro_setpoint_pub_->publish(msg);
+  std::cout << "Motor: " << motor << std::endl;
 }
 
-void BetaflightPlatform::betaflight_publishAttitudeSetpoint(
-  const geometry_msgs::msg::Quaternion & q,
-  double thrust)
+void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
 {
-  auto msg = mavros_msgs::msg::AttitudeTarget();
-  msg.header.stamp = this->get_clock()->now();
-  msg.type_mask = mavros_msgs::msg::AttitudeTarget::IGNORE_PITCH_RATE |
-    mavros_msgs::msg::AttitudeTarget::IGNORE_ROLL_RATE |
-    mavros_msgs::msg::AttitudeTarget::IGNORE_YAW_RATE;
-  msg.orientation = q;
-  msg.thrust = thrust;
-  betaflight_acro_setpoint_pub_->publish(msg);
+  sensor_msgs::msg::BatteryState battery_msg;
+  battery_msg.header.stamp = this->get_clock()->now();
+  battery_msg.voltage = battery.voltage;
+  battery_msg.current = battery.amperage;
+  battery_msg.percentage = battery.voltage / (battery.cell_count * 4.2);
+  battery_msg.charge = battery.capacity_mAh;
+
+  // std::cout << "Battery: " << battery << std::endl;
 }
 
-
-void BetaflightPlatform::betaflight_publishTwistSetpoint(
-  const geometry_msgs::msg::TwistStamped & msg)
-{
-  betaflight_twist_setpoint_pub_->publish(msg);
-}
-void BetaflightPlatform::betaflight_publishPoseSetpoint(const geometry_msgs::msg::PoseStamped & msg)
-{
-  betaflight_pose_pub_->publish(msg);
-}
 
 }  // namespace as2_platform_betaflight

@@ -27,8 +27,20 @@ set(PROJECT_DEPENDENCIES
   geometry_msgs
   tf2_geometry_msgs
   nav_msgs
-  mavros_msgs
 )
+
+# add a submodules/msp DIRECTORY
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(PKG_MSP REQUIRED IMPORTED_TARGET msp)
+
+include_directories(${PKG_MSP_INCLUDE_DIRS})
+link_directories(${PKG_MSP_LIBRARY_DIRS})
+
+message(WARNING "PKG_MSP_INCLUDE_DIRS: ${PKG_MSP_INCLUDE_DIRS}")
+message(WARNING "PKG_MSP_LIBRARIES: ${PKG_MSP_LIBRARIES}")
+message(WARNING "PKG_MSP_LIBRARY_DIRS: ${PKG_MSP_LIBRARY_DIRS}")
+message(WARNING "PKG_MSP_LDFLAGS: ${PKG_MSP_LDFLAGS}")
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
   find_package(${DEPENDENCY} REQUIRED)
@@ -38,6 +50,7 @@ endforeach()
 include_directories(
   include
   include/${PROJECT_NAME}
+  ${PKG_MSP_INCLUDE_DIRS}
 )
 
 # Set source files
@@ -50,11 +63,16 @@ add_executable(${PROJECT_NAME}_node
   src/betaflight_platform_node.cpp
   ${SOURCE_CPP_FILES})
 
+target_link_libraries(${PROJECT_NAME}_node
+  ${PKG_MSP_LIBRARIES}
+)
+
 ament_target_dependencies(${PROJECT_NAME}_node ${PROJECT_DEPENDENCIES})
 
-# Create the library
+# # Create the library
 add_library(${PROJECT_NAME} STATIC ${SOURCE_CPP_FILES})
 ament_target_dependencies(${PROJECT_NAME} ${PROJECT_DEPENDENCIES})
+target_link_libraries(${PROJECT_NAME} ${PKG_MSP_LIBRARIES})
 
 # Install the headers
 install(
@@ -77,15 +95,15 @@ install(
   RUNTIME DESTINATION bin
 )
 
-# Install the launch directory
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
+# # Install the launch directory
+# install(DIRECTORY
+#   launch
+#   DESTINATION share/${PROJECT_NAME}
+# )
 
 # Install the config directory
 install(DIRECTORY
-  config
+  launch config
   DESTINATION share/${PROJECT_NAME}
 )
 

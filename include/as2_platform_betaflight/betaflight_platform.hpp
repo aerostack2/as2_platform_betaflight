@@ -39,13 +39,12 @@
 
 #include <Eigen/Dense>
 
+#include <cstddef>
 #include <string>
 #include <memory>
 #include <cmath>
+#include <map>
 
-
-#include <mavros_msgs/msg/detail/attitude_target__struct.hpp>
-#include <nav_msgs/msg/detail/odometry__struct.hpp>
 #include <rclcpp/subscription.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -55,19 +54,19 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/nav_sat_status.hpp>
-#include <mavros_msgs/msg/attitude_target.hpp>
-#include <mavros_msgs/msg/command_code.hpp>
-#include <mavros_msgs/msg/state.hpp>
-#include <mavros_msgs/msg/thrust.hpp>
-#include <mavros_msgs/srv/command_bool.hpp>
-#include <mavros_msgs/srv/command_long.hpp>
-#include <mavros_msgs/srv/set_mode.hpp>
-
 
 #include "as2_core/aerial_platform.hpp"
 #include "as2_core/sensor.hpp"
 #include "as2_core/utils/tf_utils.hpp"
 #include "as2_core/synchronous_service_client.hpp"
+
+
+#include <msp/FlightController.hpp>
+#include <msp/msp_msg.hpp>
+#include <vector>
+
+
+#define PULSE_RANGE 1000
 
 namespace as2_platform_betaflight
 {
@@ -76,101 +75,47 @@ class BetaflightPlatform : public as2::AerialPlatform
 {
 public:
   explicit BetaflightPlatform(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-  ~BetaflightPlatform() {}
+  ~BetaflightPlatform()
+  {
+    fcu_.disconnect();
+  }
 
 public:
   void configureSensors() override;
   void publishSensorData();
-
-  // TODO(miferco97): set ATTITUDE as default mode with yaw_speed = 0  and Thrust = 0 N
-  void setDefaultControlMode() {}
+  void readParameters();
 
   bool ownSetArmingState(bool state) override;
   bool ownSetOffboardControl(bool offboard) override;
   bool ownSetPlatformControlMode(const as2_msgs::msg::ControlMode & msg) override;
-  void sendCommand() override;
+  void sendCommand() override
+  {
+    if (true) {
+      ownSendCommand();
+    }
+  }
   bool ownSendCommand() override;
   void ownKillSwitch() override;
   void ownStopPlatform() override;
 
-  void resetTrajectorySetpoint();
-  void resetAttitudeSetpoint();
-  void resetRatesSetpoint();
-
-  bool getFlagSimulationMode();
-
 private:
-  bool has_mode_settled_ = false;
+  // MSP Related functions and variables
+  std::string device_ = "/dev/ttyUSB0";
+  int baudrate_ = 115200;
 
-  std::unique_ptr<as2::sensors::Imu> imu_sensor_ptr_;
-  std::unique_ptr<as2::sensors::Sensor<sensor_msgs::msg::BatteryState>> battery_sensor_ptr_;
-  std::unique_ptr<as2::sensors::Sensor<nav_msgs::msg::Odometry>> odometry_raw_estimation_ptr_;
-  std::unique_ptr<as2::sensors::GPS> gps_sensor_ptr_;
+  fcu::FlightController fcu_;
+  void onStatus(const msp::msg::Status & status);
+  void onBoxNames(const msp::msg::BoxNames & box_names);
+  void onImu(const msp::msg::RawImu & imu);
+  void onAltitude(const msp::msg::Altitude & altitude);
+  void onMotor(const msp::msg::Motor & motor);
+  void onBattery(const msp::msg::BatteryState & battery);
 
-  std::shared_ptr<as2::tf::TfHandler> tf_handler_;
-  rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr external_odometry_sub_;
-  void externalOdomCb(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
-
-  // betaflight_ subscribers
-
-  rclcpp::Subscription<mavros_msgs::msg::State>::SharedPtr betaflight_state_sub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr betaflight_odom_sub_;
-
-  void betaflightStateCb(const mavros_msgs::msg::State::SharedPtr msg)
+  void computeControlSlopes()
   {
-    this->platform_info_msg_.set__connected(msg->connected);
-    this->platform_info_msg_.set__armed(msg->armed);
-    if (msg->mode == "OFFBOARD") {
-      this->platform_info_msg_.set__offboard(true);
-    } else {
-      this->platform_info_msg_.set__offboard(false);
-    }
-  }
-
-  // betaflight clients
-  as2::SynchronousServiceClient<mavros_msgs::srv::CommandBool>::SharedPtr betaflight_arm_client_;
-  as2::SynchronousServiceClient<mavros_msgs::srv::SetMode>::SharedPtr betaflight_set_mode_client_;
-  as2::SynchronousServiceClient<mavros_msgs::srv::CommandLong>::SharedPtr
-    betaflight_command_long_client_;
-
-
-  // betaflight publishers
-
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr betaflight_pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr betaflight_twist_setpoint_pub_;
-  rclcpp::Publisher<mavros_msgs::msg::AttitudeTarget>::SharedPtr betaflight_acro_setpoint_pub_;
-
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr betaflight_vision_pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr betaflight_vision_speed_pub_;
-
-  // betaflight_ Functions
-  bool betaflight_callOffboardControlMode();
-
-  // void betaflight_publishTrajectorySetpoint();
-  void betaflight_publishAttitudeSetpoint(const geometry_msgs::msg::Quaternion & q, double thrust);
-  void betaflight_publishRatesSetpoint(double droll, double dpitch, double dyaw, double thrust);
-  void betaflight_publishTwistSetpoint(const geometry_msgs::msg::TwistStamped & msg);
-  void betaflight_publishPoseSetpoint(const geometry_msgs::msg::PoseStamped & msg);
-  bool betaflight_callVehicleCommand(uint16_t command, float param1 = 0.0, float param2 = 0.0)
-  {
-    auto request = std::make_shared<mavros_msgs::srv::CommandLong::Request>();
-    auto response = std::make_shared<mavros_msgs::srv::CommandLong::Response>();
-    request->command = command;
-    request->broadcast = false;
-    request->confirmation = 0;
-    request->param1 = param1;
-    request->param2 = param2;
-    auto out = betaflight_command_long_client_->sendRequest(request, response);
-    if (!out || !response->success) {
-      RCLCPP_ERROR(this->get_logger(), "Error calling vehicle command");
-      return false;
-    }
-    return true;
-  }
-  void betaflight_publishVisualOdometry()
-  {
-    betaflight_vision_pose_pub_->publish(betaflight_vision_pose_msg_);
-    betaflight_vision_speed_pub_->publish(betaflight_vision_speed_msg_);
+    roll_slope_ = (max_roll_rate_ - min_roll_rate_) / static_cast<double>(PULSE_RANGE);
+    pitch_slope_ = (max_pitch_rate_ - min_pitch_rate_) / static_cast<double>(PULSE_RANGE);
+    yaw_slope_ = (max_yaw_rate_ - min_yaw_rate_) / static_cast<double>(PULSE_RANGE);
   }
 
 private:
@@ -179,16 +124,47 @@ private:
   geometry_msgs::msg::PoseStamped betaflight_vision_pose_msg_;
   geometry_msgs::msg::TwistStamped betaflight_vision_speed_msg_;
 
-
   std::atomic<uint64_t> timestamp_;
+  std::vector<uint16_t> channel_values_;
 
+  void initChannels()
+  {
+    // channels are roll, pitch, yaw, throttle, aux1, aux2, aux3, aux4
+    // roll, pitch and yaw are set to 1500, throttle to 1000, and the rest to 1000
+    channel_values_.clear();
+    channel_values_.resize(8, 1000);
+    channel_values_[0] = 1500;
+    channel_values_[1] = 1500;
+    channel_values_[2] = 1500;
+  }
 
-  float max_thrust_;
-  float min_thrust_;
+  double max_thrust_;
+  double min_thrust_;
+  double min_roll_rate_;
+  double max_roll_rate_;
+  double min_pitch_rate_;
+  double max_pitch_rate_;
+  double min_yaw_rate_;
+  double max_yaw_rate_;
+
+  double roll_slope_ = 0.0;
+  double pitch_slope_ = 0.0;
+  double yaw_slope_ = 0.0;
+
   bool simulation_mode_ = false;
   bool external_odom_ = true;
   std::string base_link_frame_id_;
   std::string odom_frame_id_;
+
+  std::map<std::string, std::size_t> box_names_;
+
+  std::unique_ptr<as2::sensors::Imu> imu_sensor_ptr_;
+  std::unique_ptr<as2::sensors::Sensor<sensor_msgs::msg::BatteryState>> battery_sensor_ptr_;
+  std::unique_ptr<as2::sensors::Sensor<nav_msgs::msg::Odometry>> odometry_raw_estimation_ptr_;
+  std::unique_ptr<as2::sensors::GPS> gps_sensor_ptr_;
+
+  std::shared_ptr<as2::tf::TfHandler> tf_handler_;
+  rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr external_odometry_sub_;
 };
 
 }  // namespace as2_platform_betaflight

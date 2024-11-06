@@ -2,6 +2,19 @@
   ros__parameters:
     cmd_freq: 100.0  # Hz of platform commands send
     info_freq: 10.0  # Hz of platform info publish
-    max_thrust: 15.0  # Max thrust to send to platform (N)
-    min_thrust: 0.15  # Min thrust to send to platform (N)
     external_odom: false  # Flag to use external odometry source
+    device: "/dev/ttyACM0"  # Serial port to connect to the Platform
+    baudrate: 115200 # Baudrate of the serial port
+    thrust:
+      max : 15.0  # Max thrust to send to platform (N)
+      min : 0.15  # Min thrust to send to platform (N)
+    roll_rate:
+      max : 200.0 # Max roll rate to send to platform (rad/s)
+      min : -200.0 # Min roll rate to send to platform (rad/s)
+    pitch_rate:
+      max : 200.0  # Max pitch rate to send to platform (rad/s)
+      min : -200.0  # Min pitch rate to send to platform (rad/s)
+    yaw_rate:
+      max : 200.0  # Max yaw rate to send to platform (rad/s)
+      min : -200.0  # Min yaw rate to send to platform (rad/s)
+
