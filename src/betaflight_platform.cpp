@@ -42,6 +42,7 @@
 
 #include "as2_platform_betaflight/betaflight_platform.hpp"
 #include "msp/msp_msg.hpp"
+#include "thrust_map.hpp"
 
 double convert_deg_s_to_rad_s(double deg_s)
 {
@@ -123,7 +124,7 @@ void BetaflightPlatform::readParameters()
 
 
 BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
-: as2::AerialPlatform(options)
+: as2::AerialPlatform(options), thrust_map_(4)    // TODO(miferco97) hardcoded number of motors
 {
   readParameters();
   configureSensors();
@@ -199,10 +200,7 @@ bool BetaflightPlatform::ownSendCommand()
   uint16_t roll_pulse = static_cast<uint16_t>(1500 + roll / roll_slope_);
   uint16_t pitch_pulse = static_cast<uint16_t>(1500 + pitch / pitch_slope_);
   uint16_t yaw_pulse = static_cast<uint16_t>(1500 + yaw / roll_slope_);
-
-  // thrust we must use thrust map to convert to pulse width
-  // TODO(miferco97): implement thrust map
-  uint16_t throttle_pulse = thrust_map_.getThrottle(thrust, voltage_);
+  uint16_t throttle_pulse = thrust_map_.getThrottle_useconds(thrust, voltage_);
 
   // set the values
 

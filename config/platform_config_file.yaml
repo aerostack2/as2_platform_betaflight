@@ -17,11 +17,12 @@
     yaw_rate:
       max : 711.0  # Max yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
       min : -711.0  # Min yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
-    thrust_map:
-      a: 0.0
-      b: 0.0
-      c: 0.0
-      d: 0.0
-      e: 0.0
-      f: 0.0
+    thrust_map: 
+      a: -18414.433600449644
+      b: 829.3300577713844
+      c: 2453.1637496766352
+      d: -19.827039781458588
+      e: -36.0309786395156
+      f: -77.3083750576221
+
 

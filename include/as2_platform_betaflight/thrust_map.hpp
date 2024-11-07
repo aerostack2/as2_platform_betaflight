@@ -39,15 +39,19 @@
 #define THRUST_MAP_HPP_
 
 #include <algorithm>
+#include <cstdint>
 #include <ostream>
 #include <string>
 
 class ThrustMap
 {
 public:
-  ThrustMap() = default;
-  ~ThrustMap() = default;
-  ThrustMap(double a, double b, double c, double d, double e, double f)
+  explicit ThrustMap(unsigned int n_motors)
+  : a(0.0), b(0.0), c(0.0), d(0.0), e(0.0), f(0.0), n_motors(n_motors)
+  {}
+  explicit ThrustMap(
+    unsigned int n_motors, double a, double b, double c, double d, double e,
+    double f)
   : a(a), b(b), c(c), d(d), e(e), f(f)
   {}
 
@@ -83,15 +87,19 @@ public:
   }
 
 
-  double getThrottle(double thrust, double voltage)
+  uint16_t getThrottle_useconds(double thrust, double voltage)
   {
-    double throttle = mapThrust(thrust, voltage);
-    throttle = std::clamp(throttle, 0.0, 1.0);
-    return 0.0;
+    double thrust_per_motor = thrust / static_cast<double>(n_motors);
+    uint16_t throttle = static_cast<uint16_t>(mapThrust(thrust_per_motor, voltage));
+    throttle = (throttle < 1000) ? 1000 : throttle;
+    throttle = (throttle > 2000) ? 2000 : throttle;
+    return throttle;
   }
 
 private:
   double a, b, c, d, e, f;
+  uint n_motors;
 };
+
 
 #endif  // THRUST_MAP_HPP_
