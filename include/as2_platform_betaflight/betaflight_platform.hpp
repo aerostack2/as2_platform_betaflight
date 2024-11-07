@@ -59,6 +59,7 @@
 #include "as2_core/sensor.hpp"
 #include "as2_core/utils/tf_utils.hpp"
 #include "as2_core/synchronous_service_client.hpp"
+#include "as2_platform_betaflight/thrust_map.hpp"
 
 
 #include <msp/FlightController.hpp>
@@ -144,6 +145,7 @@ private:
 
   std::atomic<uint64_t> timestamp_;
   std::vector<uint16_t> channel_values_;
+  ThrustMap thrust_map_;
 
   void initChannels()
   {
@@ -178,6 +180,8 @@ private:
   double roll_slope_ = 0.0;
   double pitch_slope_ = 0.0;
   double yaw_slope_ = 0.0;
+
+  double voltage_ = 0.0;
 
   bool simulation_mode_ = false;
   bool external_odom_ = true;

@@ -56,6 +56,7 @@ include_directories(
 # Set source files
 set(SOURCE_CPP_FILES
   src/betaflight_platform.cpp
+  src/thrust_map.cpp
 )
 
 # Create the node executable

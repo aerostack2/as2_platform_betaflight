@@ -73,6 +73,13 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("thrust.min");
   this->declare_parameter<float>("thrust.max");
 
+  this->declare_parameter<float>("thrust_map.a");
+  this->declare_parameter<float>("thrust_map.b");
+  this->declare_parameter<float>("thrust_map.c");
+  this->declare_parameter<float>("thrust_map.d");
+  this->declare_parameter<float>("thrust_map.e");
+  this->declare_parameter<float>("thrust_map.f");
+
 
   base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
   odom_frame_id_ = as2::tf::generateTfName(this, "odom");
@@ -102,6 +109,16 @@ void BetaflightPlatform::readParameters()
   RCLCPP_INFO(this->get_logger(), "Roll rate bounds: [%f, %f]", min_roll_rate_, max_roll_rate_);
   RCLCPP_INFO(this->get_logger(), "Yaw rate bounds: [%f, %f]", min_yaw_rate_, max_yaw_rate_);
   computeControlSlopes();
+
+  thrust_map_.set_parameters(
+    this->get_parameter("thrust_map.a").as_double(),
+    this->get_parameter("thrust_map.b").as_double(),
+    this->get_parameter("thrust_map.c").as_double(),
+    this->get_parameter("thrust_map.d").as_double(),
+    this->get_parameter("thrust_map.e").as_double(),
+    this->get_parameter("thrust_map.f").as_double());
+
+  RCLCPP_INFO(this->get_logger(), "Thrust map: %s", thrust_map_.to_string().c_str());
 }
 
 
@@ -185,7 +202,7 @@ bool BetaflightPlatform::ownSendCommand()
 
   // thrust we must use thrust map to convert to pulse width
   // TODO(miferco97): implement thrust map
-  uint16_t throttle_pulse = static_cast<uint16_t>(1000 + thrust / max_thrust_ * 1000);
+  uint16_t throttle_pulse = thrust_map_.getThrottle(thrust, voltage_);
 
   // set the values
 
@@ -276,6 +293,10 @@ void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
   battery_msg.current = battery.amperage;
   battery_msg.percentage = battery.voltage / (battery.cell_count * 4.2);
   battery_msg.charge = battery.capacity_mAh;
+
+  battery_sensor_ptr_->updateData(battery_msg);
+
+  voltage_ = battery.voltage;
 
   // std::cout << "Battery: " << battery << std::endl;
 }
