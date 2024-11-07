@@ -96,6 +96,13 @@ public:
     return throttle;
   }
 
+  double getThrottle_normalized(double thrust, double voltage)
+  {
+    double thrust_per_motor = thrust / static_cast<double>(n_motors);
+    double throttle = (mapThrust(thrust_per_motor, voltage) - 1000.0) / 1000.0;
+    return std::clamp(throttle, 0.0, 1.0);
+  }
+
 private:
   double a, b, c, d, e, f;
   uint n_motors;
