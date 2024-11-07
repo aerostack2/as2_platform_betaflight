@@ -1,6 +1,7 @@
 # Tests
 file(GLOB TEST_SOURCE "*_test.cpp")
 
+message(WARNING "TEST_SOURCE: ${TEST_SOURCE}")
 if(TEST_SOURCE)
   foreach(TEST_FILE ${TEST_SOURCE})
     get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)

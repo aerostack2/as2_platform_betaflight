@@ -71,6 +71,20 @@
 namespace as2_platform_betaflight
 {
 
+enum RC_CHANNELS
+{
+  ROLL = 0,
+  PITCH = 1,
+  THROTTLE = 2,
+  YAW = 3,
+  ARM = 4,
+  OFFBOARD = 5,
+  KILLSWITCH = 6,
+  AUX4 = 7,
+  AUX5 = 8
+};
+
+
 class BetaflightPlatform : public as2::AerialPlatform
 {
 public:
@@ -110,6 +124,10 @@ private:
   void onAltitude(const msp::msg::Altitude & altitude);
   void onMotor(const msp::msg::Motor & motor);
   void onBattery(const msp::msg::BatteryState & battery);
+  void onRc(const msp::msg::Rc & rc)
+  {
+    std::cout << "RC: " << rc << std::endl;
+  }
 
   void computeControlSlopes()
   {
@@ -129,13 +147,23 @@ private:
 
   void initChannels()
   {
-    // channels are roll, pitch, yaw, throttle, aux1, aux2, aux3, aux4
+    // channels are :
+    // - 0 roll,
+    // - 1 pitch,
+    // - 2 throttle,
+    // - 3 yaw,
+    // - 4 aux1 ( ARM ) ,
+    // - 5 aux2 ( OFFBOARD ),
+    // - 6 aux3 ( KILLSWITCH ),
+    // - 7 aux4
+    // - 8 aux5
     // roll, pitch and yaw are set to 1500, throttle to 1000, and the rest to 1000
     channel_values_.clear();
     channel_values_.resize(8, 1000);
-    channel_values_[0] = 1500;
-    channel_values_[1] = 1500;
-    channel_values_[2] = 1500;
+    channel_values_[RC_CHANNELS::ROLL] = 1500;
+    channel_values_[RC_CHANNELS::PITCH] = 1500;
+    channel_values_[RC_CHANNELS::THROTTLE] = 1000;
+    channel_values_[RC_CHANNELS::YAW] = 1500;
   }
 
   double max_thrust_;

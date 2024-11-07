@@ -9,12 +9,12 @@
       max : 15.0  # Max thrust to send to platform (N)
       min : 0.15  # Min thrust to send to platform (N)
     roll_rate:
-      max : 200.0 # Max roll rate to send to platform (rad/s)
-      min : -200.0 # Min roll rate to send to platform (rad/s)
+      max : 711.0 # Max roll rate to send to platform (deg/s) # ATTENTION: this is in deg/s
+      min : -711.0 # Min roll rate to send to platform (deg/s) # ATTENTION: this is in deg/s
     pitch_rate:
-      max : 200.0  # Max pitch rate to send to platform (rad/s)
-      min : -200.0  # Min pitch rate to send to platform (rad/s)
+      max : 711.0  # Max pitch rate to send to platform (deg/s) # ATTENTION: this is in deg/s
+      min : -711.0  # Min pitch rate to send to platform (deg/s) # ATTENTION: this is in deg/s
     yaw_rate:
-      max : 200.0  # Max yaw rate to send to platform (rad/s)
-      min : -200.0  # Min yaw rate to send to platform (rad/s)
+      max : 711.0  # Max yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
+      min : -711.0  # Min yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
 

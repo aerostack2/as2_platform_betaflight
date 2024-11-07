@@ -43,6 +43,11 @@
 #include "as2_platform_betaflight/betaflight_platform.hpp"
 #include "msp/msp_msg.hpp"
 
+double convert_deg_s_to_rad_s(double deg_s)
+{
+  return deg_s / 180.0 * M_PI;
+}
+
 
 void notImplemented()
 {
@@ -78,12 +83,12 @@ void BetaflightPlatform::readParameters()
 
   max_thrust_ = this->get_parameter("thrust.max").as_double();
   min_thrust_ = this->get_parameter("thrust.min").as_double();
-  max_pitch_rate_ = this->get_parameter("pitch_rate.max").as_double();
-  min_pitch_rate_ = this->get_parameter("pitch_rate.min").as_double();
-  max_roll_rate_ = this->get_parameter("roll_rate.max").as_double();
-  min_roll_rate_ = this->get_parameter("roll_rate.min").as_double();
-  max_yaw_rate_ = this->get_parameter("yaw_rate.max").as_double();
-  min_yaw_rate_ = this->get_parameter("yaw_rate.min").as_double();
+  max_pitch_rate_ = convert_deg_s_to_rad_s(this->get_parameter("pitch_rate.max").as_double());
+  min_pitch_rate_ = convert_deg_s_to_rad_s(this->get_parameter("pitch_rate.min").as_double());
+  max_roll_rate_ = convert_deg_s_to_rad_s(this->get_parameter("roll_rate.max").as_double());
+  min_roll_rate_ = convert_deg_s_to_rad_s(this->get_parameter("roll_rate.min").as_double());
+  max_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.max").as_double());
+  min_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.min").as_double());
 
 
   RCLCPP_INFO(this->get_logger(), "Device: %s", device_.c_str());
@@ -120,6 +125,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.1);
   // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
   fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
   box_names_ = fcu_.getBoxNames();
 }
 
@@ -137,7 +143,7 @@ bool BetaflightPlatform::ownSetArmingState(bool state)
 {
   // TODO(miferco97): check if this is correct
   int value = state ? 1 : 0;
-  channel_values_[4] = 1000 + value * 500;
+  channel_values_[RC_CHANNELS::ARM] = 1000 + value * 1000;
   return true;
 }
 
@@ -179,21 +185,21 @@ bool BetaflightPlatform::ownSendCommand()
 
   // thrust we must use thrust map to convert to pulse width
   // TODO(miferco97): implement thrust map
-  uint16_t thrust_pulse = static_cast<uint16_t>(1000 + thrust / max_thrust_ * 1000);
+  uint16_t throttle_pulse = static_cast<uint16_t>(1000 + thrust / max_thrust_ * 1000);
 
   // set the values
 
-  channel_values_[0] = roll_pulse;
-  channel_values_[1] = pitch_pulse;
-  channel_values_[2] = yaw_pulse;
-  channel_values_[3] = thrust_pulse;
+  channel_values_[RC_CHANNELS::ROLL] = roll_pulse;
+  channel_values_[RC_CHANNELS::PITCH] = pitch_pulse;
+  channel_values_[RC_CHANNELS::THROTTLE] = throttle_pulse;
+  channel_values_[RC_CHANNELS::YAW] = yaw_pulse;
 
   // print the values for debugging
-  std::cout << "Channel values: ";
-  for (auto & value : channel_values_) {
-    std::cout << value << " ";
-  }
-  std::cout << std::endl;
+  // std::cout << "Channel values: ";
+  // for (auto & value : channel_values_) {
+  //   std::cout << value << " ";
+  // }
+  // std::cout << std::endl;
 
   bool out = fcu_.setRc(channel_values_);
   if (!out) {
@@ -205,7 +211,14 @@ bool BetaflightPlatform::ownSendCommand()
 
 void BetaflightPlatform::ownKillSwitch()
 {
-  notImplemented();
+  // set all channels to 0
+  std::fill(channel_values_.begin(), channel_values_.end(), 1000);
+
+  channel_values_[RC_CHANNELS::KILLSWITCH] = 2000;
+  while (true) {
+    fcu_.setRc(channel_values_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 }
 
 void BetaflightPlatform::ownStopPlatform() {RCLCPP_WARN(this->get_logger(), "NOT IMPLEMENTED");}
@@ -252,7 +265,7 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  std::cout << "Motor: " << motor << std::endl;
+  // std::cout << "Motor: " << motor << std::endl;
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
