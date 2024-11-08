@@ -54,6 +54,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/nav_sat_status.hpp>
+#include <std_msgs/msg/u_int16_multi_array.hpp>
 
 #include "as2_core/aerial_platform.hpp"
 #include "as2_core/sensor.hpp"
@@ -205,6 +206,22 @@ private:
 
   std::shared_ptr<as2::tf::TfHandler> tf_handler_;
   rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr external_odometry_sub_;
+
+// Debug:
+
+private:
+  // Debug rc publisher
+  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
+  std_msgs::msg::UInt16MultiArray debug_rc_;
+
+  void publishDebugRc()
+  {
+    // Assign the values from `channel_values_` to the `debug_rc_` message
+    debug_rc_.data = channel_values_;
+
+    // Publish the message
+    debug_rc_pub_->publish(debug_rc_);
+  }
 };
 
 }  // namespace as2_platform_betaflight

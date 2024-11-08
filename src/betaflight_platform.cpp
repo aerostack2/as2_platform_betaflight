@@ -171,6 +171,18 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
   fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
   box_names_ = fcu_.getBoxNames();
+
+  debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
+  // Clear layout dimensions if they were set in a previous publication
+  debug_rc_.layout.dim.clear();
+
+  // Configure the array layout
+  std_msgs::msg::MultiArrayDimension dim;
+  dim.size = channel_values_.size();
+  dim.stride = 1;
+  dim.label = "rc_channels";
+  debug_rc_.layout.dim.push_back(dim);
+  publishDebugRc();
 }
 
 void BetaflightPlatform::configureSensors()
@@ -262,6 +274,7 @@ bool BetaflightPlatform::ownSendCommand()
   //   std::cout << value << " ";
   // }
   // std::cout << std::endl;
+  publishDebugRc();
 
   bool out = fcu_.setRc(channel_values_);
   if (!out) {
