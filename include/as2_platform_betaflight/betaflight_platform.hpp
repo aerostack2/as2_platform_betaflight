@@ -183,6 +183,14 @@ private:
 
   double voltage_ = 0.0;
 
+  bool use_thrust_map_ = false;
+  bool limit_output_ = false;
+  double limit_roll_percent_ = 100.0;
+  double limit_pitch_percent_ = 100.0;
+  double limit_yaw_percent_ = 100.0;
+  double limit_thrust_percent_ = 100.0;
+
+
   bool simulation_mode_ = false;
   bool external_odom_ = true;
   std::string base_link_frame_id_;

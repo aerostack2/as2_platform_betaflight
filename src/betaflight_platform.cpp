@@ -36,6 +36,7 @@
  */
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <iostream>
@@ -74,12 +75,19 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("thrust.min");
   this->declare_parameter<float>("thrust.max");
 
+  this->declare_parameter<bool>("use_thrust_map");
   this->declare_parameter<float>("thrust_map.a");
   this->declare_parameter<float>("thrust_map.b");
   this->declare_parameter<float>("thrust_map.c");
   this->declare_parameter<float>("thrust_map.d");
   this->declare_parameter<float>("thrust_map.e");
   this->declare_parameter<float>("thrust_map.f");
+
+  this->declare_parameter<bool>("limit_output");
+  this->declare_parameter<float>("limit_roll_percent");
+  this->declare_parameter<float>("limit_pitch_percent");
+  this->declare_parameter<float>("limit_yaw_percent");
+  this->declare_parameter<float>("limit_thrust_percent");
 
 
   base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
@@ -98,6 +106,21 @@ void BetaflightPlatform::readParameters()
   max_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.max").as_double());
   min_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.min").as_double());
 
+  use_thrust_map_ = this->get_parameter("use_thrust_map").as_bool();
+
+  thrust_map_.set_parameters(
+    this->get_parameter("thrust_map.a").as_double(),
+    this->get_parameter("thrust_map.b").as_double(),
+    this->get_parameter("thrust_map.c").as_double(),
+    this->get_parameter("thrust_map.d").as_double(),
+    this->get_parameter("thrust_map.e").as_double(),
+    this->get_parameter("thrust_map.f").as_double());
+
+  limit_output_ = this->get_parameter("limit_output").as_bool();
+  limit_roll_percent_ = this->get_parameter("limit_roll_percent").as_double();
+  limit_pitch_percent_ = this->get_parameter("limit_pitch_percent").as_double();
+  limit_yaw_percent_ = this->get_parameter("limit_yaw_percent").as_double();
+  limit_thrust_percent_ = this->get_parameter("limit_thrust_percent").as_double();
 
   RCLCPP_INFO(this->get_logger(), "Device: %s", device_.c_str());
   RCLCPP_INFO(this->get_logger(), "Baudrate: %d", baudrate_);
@@ -111,15 +134,18 @@ void BetaflightPlatform::readParameters()
   RCLCPP_INFO(this->get_logger(), "Yaw rate bounds: [%f, %f]", min_yaw_rate_, max_yaw_rate_);
   computeControlSlopes();
 
-  thrust_map_.set_parameters(
-    this->get_parameter("thrust_map.a").as_double(),
-    this->get_parameter("thrust_map.b").as_double(),
-    this->get_parameter("thrust_map.c").as_double(),
-    this->get_parameter("thrust_map.d").as_double(),
-    this->get_parameter("thrust_map.e").as_double(),
-    this->get_parameter("thrust_map.f").as_double());
 
-  RCLCPP_INFO(this->get_logger(), "Thrust map: %s", thrust_map_.to_string().c_str());
+  RCLCPP_INFO(this->get_logger(), "Using thrust map: %s", use_thrust_map_ ? "true" : "false");
+  if (use_thrust_map_) {
+    RCLCPP_INFO(this->get_logger(), "Thrust map: %s", thrust_map_.to_string().c_str());
+  }
+  RCLCPP_INFO(this->get_logger(), "Limiting output: %s", limit_output_ ? "true" : "false");
+  if (limit_output_) {
+    RCLCPP_INFO(this->get_logger(), "Roll limit: %f", limit_roll_percent_);
+    RCLCPP_INFO(this->get_logger(), "Pitch limit: %f", limit_pitch_percent_);
+    RCLCPP_INFO(this->get_logger(), "Yaw limit: %f", limit_yaw_percent_);
+    RCLCPP_INFO(this->get_logger(), "Thrust limit: %f", limit_thrust_percent_);
+  }
 }
 
 
@@ -200,7 +226,28 @@ bool BetaflightPlatform::ownSendCommand()
   uint16_t roll_pulse = static_cast<uint16_t>(1500 + roll / roll_slope_);
   uint16_t pitch_pulse = static_cast<uint16_t>(1500 + pitch / pitch_slope_);
   uint16_t yaw_pulse = static_cast<uint16_t>(1500 + yaw / roll_slope_);
-  uint16_t throttle_pulse = thrust_map_.getThrottle_useconds(thrust, voltage_);
+  uint16_t throttle_pulse = 1000;
+  if (use_thrust_map_) {
+    throttle_pulse = thrust_map_.getThrottle_useconds(thrust, voltage_);
+  } else {
+    double thust_normalized = thrust / max_thrust_;
+    throttle_pulse = static_cast<uint16_t>(1000 + thust_normalized * 1000);
+  }
+
+  if (limit_output_) {
+    roll_pulse = std::clamp(
+      roll_pulse, static_cast<uint16_t>(1500 - limit_roll_percent_ * 500),
+      static_cast<uint16_t>(1500 + limit_roll_percent_ * 500));
+    pitch_pulse = std::clamp(
+      pitch_pulse, static_cast<uint16_t>(1500 - limit_pitch_percent_ * 500),
+      static_cast<uint16_t>(1500 + limit_pitch_percent_ * 500));
+    yaw_pulse = std::clamp(
+      yaw_pulse, static_cast<uint16_t>(1500 - limit_yaw_percent_ * 500),
+      static_cast<uint16_t>(1500 + limit_yaw_percent_ * 500));
+    throttle_pulse = std::clamp(
+      throttle_pulse, static_cast<uint16_t>(1000),
+      static_cast<uint16_t>(1000 + limit_thrust_percent_ * 1000));
+  }
 
   // set the values
 

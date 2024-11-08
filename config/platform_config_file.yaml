@@ -6,7 +6,7 @@
     device: "/dev/ttyACM0"  # Serial port to connect to the Platform
     baudrate: 115200 # Baudrate of the serial port
     thrust:
-      max : 15.0  # Max thrust to send to platform (N)
+      max : 80.0  # Max thrust to send to platform (N)
       min : 0.15  # Min thrust to send to platform (N)
     roll_rate:
       max : 711.0 # Max roll rate to send to platform (deg/s) # ATTENTION: this is in deg/s
@@ -17,6 +17,7 @@
     yaw_rate:
       max : 711.0  # Max yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
       min : -711.0  # Min yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
+    use_thrust_map: false # Flag to use thrust map
     thrust_map: 
       a: -18414.433600449644
       b: 829.3300577713844
@@ -24,5 +25,11 @@
       d: -19.827039781458588
       e: -36.0309786395156
       f: -77.3083750576221
+
+    limit_output: true  # Flag to limit the output of the platform
+    limit_roll_percent: 0.25  # Limit of roll command in percent (between 0 and 1)
+    limit_pitch_percent: 0.25  # Limit of pitch command in percent (between 0 and 1)
+    limit_yaw_percent: 0.25  # Limit of yaw command in percent (between 0 and 1)
+    limit_thrust_percent: 0.1  # Limit of thrust command in percent (between 0 and 1)
 
 
