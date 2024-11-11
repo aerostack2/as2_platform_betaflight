@@ -226,8 +226,8 @@ bool BetaflightPlatform::ownSendCommand()
   double thrust = this->command_thrust_msg_.thrust;
   double roll = this->command_twist_msg_.twist.angular.x;
   double pitch = this->command_twist_msg_.twist.angular.y;
-  // YAW is inverted, since for positive yaw the drone rotates clockwise, and the u_sec value
-  // shall decrease, not increase.
+  // YAW is inverted, since for positive yaw the drone rotates counterclockwise,
+  // so the u_sec value shall decrease, not increase.
   double yaw = (-1) * this->command_twist_msg_.twist.angular.z;
 
   // saturate thrust
