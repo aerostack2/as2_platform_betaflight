@@ -333,8 +333,13 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   {0.0004, 0.0, 0.0,
     0.0, 0.0004, 0.0,
     0.0, 0.0, 0.0004}
+  float64[9] ori_covariance =
+  {99999.9, 0.0, 0.0,
+    0.0, 99999.9, 0.0,
+    0.0, 0.0, 99999.9};
   imu_msg.angular_velocity_covariance = gyro_covariance;
   imu_msg.linear_acceleration_covariance = accel_covariance;
+  imu_msg.orientation_covariance = ori_covariance;
 
   // magnetic field vector
   // sensor_msgs::msg::MagneticField mag_msg;
