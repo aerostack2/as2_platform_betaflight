@@ -309,7 +309,8 @@ void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 
 void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 {
-  const msp::msg::ImuSI imu_si(imu, 512.0, 1.0 / 4.096, 0.092, 9.80665);
+  // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
+  const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
 
   std_msgs::msg::Header hdr;
   hdr.stamp = this->get_clock()->now();
