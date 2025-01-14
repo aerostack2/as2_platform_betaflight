@@ -165,7 +165,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.01);
   fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.02);
   // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
   // fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
@@ -326,15 +326,15 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_msg.angular_velocity.y = imu_si.gyro[1] / 180.0 * M_PI;
   imu_msg.angular_velocity.z = imu_si.gyro[2] / 180.0 * M_PI;
 
-  float64[9] gyro_covariance =
+  std::array<double, 9> gyro_covariance =
   {0.005 / 180.0 * M_PI, 0.0, 0.0,
     0.0, 0.005 / 180.0 * M_PI, 0.0,
-    0.0, 0.0, 0.005 / 180.0 * M_PI}
-  float64[9] accel_covariance =
+    0.0, 0.0, 0.005 / 180.0 * M_PI};
+  std::array<double, 9> accel_covariance =
   {0.0004, 0.0, 0.0,
     0.0, 0.0004, 0.0,
-    0.0, 0.0, 0.0004}
-  float64[9] ori_covariance =
+    0.0, 0.0, 0.0004};
+  std::array<double, 9> ori_covariance =
   {99999.9, 0.0, 0.0,
     0.0, 99999.9, 0.0,
     0.0, 0.0, 99999.9};
