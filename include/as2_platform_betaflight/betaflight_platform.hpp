@@ -212,6 +212,7 @@ private:
 private:
   // Debug rc publisher
   rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
   std_msgs::msg::UInt16MultiArray debug_rc_;
 
   void publishDebugRc()

@@ -173,6 +173,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
+  raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_.layout.dim.clear();
 
@@ -309,12 +310,25 @@ void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 
 void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 {
-  // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
-  const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
 
   std_msgs::msg::Header hdr;
   hdr.stamp = this->get_clock()->now();
   hdr.frame_id = base_link_frame_id_;
+
+  // Publish raw IMU message
+  sensor_msgs::msg::Imu imu_raw;
+  imu_raw.header = hdr;
+  imu_raw.linear_acceleration.x = imu.acc[0];
+  imu_raw.linear_acceleration.y = imu.acc[1];
+  imu_raw.linear_acceleration.z = imu.acc[2];
+  imu_raw.angular_velocity.x = imu.gyro[0] / 180.0 * M_PI;
+  imu_raw.angular_velocity.y = imu.gyro[1] / 180.0 * M_PI;
+  imu_raw.angular_velocity.z = imu.gyro[2] / 180.0 * M_PI;
+
+  raw_imu_pub_->publish(imu_raw);
+
+  // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
+  const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
 
   // raw imu data without orientation
   sensor_msgs::msg::Imu imu_msg;
