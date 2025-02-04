@@ -66,6 +66,13 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<int>("baudrate");
   this->declare_parameter<bool>("external_odom");
 
+  // Set publishers frequency. Set frequency to 0 to disable publication
+  this->declare_parameter<float>("imu_hz");
+  this->declare_parameter<float>("battery_hz");
+  this->declare_parameter<float>("altitude_hz");
+  this->declare_parameter<float>("rc_hz");
+  this->declare_parameter<float>("motor_hz");
+
   this->declare_parameter<float>("yaw_rate.min");
   this->declare_parameter<float>("yaw_rate.max");
   this->declare_parameter<float>("pitch_rate.min");
@@ -96,6 +103,12 @@ void BetaflightPlatform::readParameters()
   device_ = this->get_parameter("device").as_string();
   baudrate_ = this->get_parameter("baudrate").as_int();
   external_odom_ = this->get_parameter("external_odom").as_bool();
+
+  imu_hz_ = this->get_parameter("imu_hz").as_double();
+  battery_hz_ = this->get_parameter("battery_hz").as_double();
+  altitude_hz_ = this->get_parameter("altitude_hz").as_double();
+  rc_hz_ = this->get_parameter("rc_hz").as_double();
+  motor_hz_ = this->get_parameter("motor_hz").as_double();
 
   max_thrust_ = this->get_parameter("thrust.max").as_double();
   min_thrust_ = this->get_parameter("thrust.min").as_double();
@@ -165,11 +178,11 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.00625);
-  fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.02);
-  fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
-  fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
-  fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
+  if (imu_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onImu, this, imu_hz_);}
+  if (battery_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onBattery, this, battery_hz_);}
+  if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
+  if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
+  if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);

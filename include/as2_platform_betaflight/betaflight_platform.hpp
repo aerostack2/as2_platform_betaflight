@@ -167,6 +167,12 @@ private:
     channel_values_[RC_CHANNELS::YAW] = 1500;
   }
 
+  double imu_hz_ = 0.0;
+  double battery_hz_ = 0.0;
+  double altitude_hz_ = 0.0;
+  double rc_hz_ = 0.0;
+  double motor_hz_ = 0.0;
+
   double max_thrust_;
   double min_thrust_;
   double min_roll_rate_;
