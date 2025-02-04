@@ -165,11 +165,11 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.01);
+  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.00625);
   fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.02);
-  // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
-  // fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
-  // fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
@@ -365,14 +365,14 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_sensor_ptr_->updateAndPublish(imu_msg);
 }
 
-// void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
-// {
-//   std::cout << "Altitude: " << altitude << std::endl;
-// }
+void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
+{
+  std::cout << "Altitude: " << altitude << std::endl;
+}
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  // std::cout << "Motor: " << motor << std::endl;
+  std::cout << "Motor: " << motor << std::endl;
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
