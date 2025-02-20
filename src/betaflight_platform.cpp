@@ -310,7 +310,6 @@ void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 
 void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 {
-
   std_msgs::msg::Header hdr;
   hdr.stamp = this->get_clock()->now();
   hdr.frame_id = base_link_frame_id_;
