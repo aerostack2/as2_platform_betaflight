@@ -34,8 +34,8 @@
  * @author Miguel Fernández Cortizas
  */
 
-#ifndef AS2_PLATFORM_MAVLINK__MAVLINK_PLATFORM_HPP_
-#define AS2_PLATFORM_MAVLINK__MAVLINK_PLATFORM_HPP_
+#ifndef AS2_PLATFORM_BETAFLIGHT__BETAFLIGHT_PLATFORM_HPP_
+#define AS2_PLATFORM_BETAFLIGHT__BETAFLIGHT_PLATFORM_HPP_
 
 #include <Eigen/Dense>
 
@@ -44,6 +44,7 @@
 #include <memory>
 #include <cmath>
 #include <map>
+#include <vector>
 
 #include <rclcpp/subscription.hpp>
 
@@ -62,11 +63,8 @@
 #include "as2_core/synchronous_service_client.hpp"
 #include "as2_platform_betaflight/thrust_map.hpp"
 
-
 #include <msp/FlightController.hpp>
 #include <msp/msp_msg.hpp>
-#include <vector>
-
 
 #define PULSE_RANGE 1000
 
@@ -212,6 +210,7 @@ private:
 private:
   // Debug rc publisher
   rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
   std_msgs::msg::UInt16MultiArray debug_rc_;
 
   void publishDebugRc()
@@ -226,4 +225,4 @@ private:
 
 }  // namespace as2_platform_betaflight
 
-#endif  // AS2_PLATFORM_MAVLINK__MAVLINK_PLATFORM_HPP_
+#endif  // AS2_PLATFORM_BETAFLIGHT__BETAFLIGHT_PLATFORM_HPP_

@@ -165,7 +165,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.1);
+  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.01);
   fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.02);
   // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
   // fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
@@ -173,6 +173,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
+  raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_.layout.dim.clear();
 
@@ -309,11 +310,24 @@ void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 
 void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 {
-  const msp::msg::ImuSI imu_si(imu, 512.0, 1.0 / 4.096, 0.092, 9.80665);
-
   std_msgs::msg::Header hdr;
   hdr.stamp = this->get_clock()->now();
   hdr.frame_id = base_link_frame_id_;
+
+  // Publish raw IMU message
+  sensor_msgs::msg::Imu imu_raw;
+  imu_raw.header = hdr;
+  imu_raw.linear_acceleration.x = imu.acc[0];
+  imu_raw.linear_acceleration.y = imu.acc[1];
+  imu_raw.linear_acceleration.z = imu.acc[2];
+  imu_raw.angular_velocity.x = imu.gyro[0] / 180.0 * M_PI;
+  imu_raw.angular_velocity.y = imu.gyro[1] / 180.0 * M_PI;
+  imu_raw.angular_velocity.z = imu.gyro[2] / 180.0 * M_PI;
+
+  raw_imu_pub_->publish(imu_raw);
+
+  // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
+  const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
 
   // raw imu data without orientation
   sensor_msgs::msg::Imu imu_msg;
@@ -324,6 +338,22 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_msg.angular_velocity.x = imu_si.gyro[0] / 180.0 * M_PI;
   imu_msg.angular_velocity.y = imu_si.gyro[1] / 180.0 * M_PI;
   imu_msg.angular_velocity.z = imu_si.gyro[2] / 180.0 * M_PI;
+
+  std::array<double, 9> gyro_covariance =
+  {0.005 / 180.0 * M_PI, 0.0, 0.0,
+    0.0, 0.005 / 180.0 * M_PI, 0.0,
+    0.0, 0.0, 0.005 / 180.0 * M_PI};
+  std::array<double, 9> accel_covariance =
+  {0.0004, 0.0, 0.0,
+    0.0, 0.0004, 0.0,
+    0.0, 0.0, 0.0004};
+  std::array<double, 9> ori_covariance =
+  {99999.9, 0.0, 0.0,
+    0.0, 99999.9, 0.0,
+    0.0, 0.0, 99999.9};
+  imu_msg.angular_velocity_covariance = gyro_covariance;
+  imu_msg.linear_acceleration_covariance = accel_covariance;
+  imu_msg.orientation_covariance = ori_covariance;
 
   // magnetic field vector
   // sensor_msgs::msg::MagneticField mag_msg;

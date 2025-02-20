@@ -35,8 +35,8 @@
  *
  */
 
-#ifndef THRUST_MAP_HPP_
-#define THRUST_MAP_HPP_
+#ifndef AS2_PLATFORM_BETAFLIGHT__THRUST_MAP_HPP_
+#define AS2_PLATFORM_BETAFLIGHT__THRUST_MAP_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -109,4 +109,4 @@ private:
 };
 
 
-#endif  // THRUST_MAP_HPP_
+#endif  // AS2_PLATFORM_BETAFLIGHT__THRUST_MAP_HPP_
