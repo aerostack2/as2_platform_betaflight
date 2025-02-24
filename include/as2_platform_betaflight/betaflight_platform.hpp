@@ -50,7 +50,6 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
-#include <geometry_msgs/msg/quaternion.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -222,7 +221,7 @@ private:
   // Debug rc publisher
   rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Quaternion>::SharedPtr debug_motors_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_motors_pub_;
   std_msgs::msg::UInt16MultiArray debug_rc_;
 
   void publishDebugRc()

@@ -196,7 +196,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
-  debug_motors_pub_ = this->create_publisher<geometry_msgs::msg::Quaternion>("debug/motors", 1);
+  debug_motors_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/motors", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_.layout.dim.clear();
 
@@ -396,12 +396,17 @@ void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
   // std::cout << "Motor: " << motor << std::endl;
-  geometry_msgs::msg::Quaternion motor_msg;
-  motor_msg.set__x(motor.motor[0]);
-  motor_msg.set__y(motor.motor[1]);
-  motor_msg.set__z(motor.motor[2]);
-  motor_msg.set__w(motor.motor[3]);
-  debug_motors_pub_->publish(motor_msg);
+  std_msgs::msg::UInt16MultiArray debug_motor_msg;
+  debug_motor_msg.layout.dim[0].size = 8;
+  debug_motor_msg.data[0] = motor.motor[0];
+  debug_motor_msg.data[1] = motor.motor[1];
+  debug_motor_msg.data[2] = motor.motor[2];
+  debug_motor_msg.data[3] = motor.motor[3];
+  debug_motor_msg.data[4] = motor.motor[4];
+  debug_motor_msg.data[5] = motor.motor[5];
+  debug_motor_msg.data[6] = motor.motor[6];
+  debug_motor_msg.data[7] = motor.motor[7];
+  debug_motors_pub_->publish(debug_motor_msg);
 
 }
 
