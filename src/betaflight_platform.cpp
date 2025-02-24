@@ -397,7 +397,7 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
   // std::cout << "Motor: " << motor << std::endl;
   std_msgs::msg::UInt16MultiArray debug_motor_msg;
-  debug_motor_msg.layout.dim[0].size = 8;
+  // debug_motor_msg.layout.dim[0].size = 8;
   debug_motor_msg.data[0] = motor.motor[0];
   debug_motor_msg.data[1] = motor.motor[1];
   debug_motor_msg.data[2] = motor.motor[2];
