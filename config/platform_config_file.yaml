@@ -13,7 +13,7 @@
     battery_hz: 0.02
     altitude_hz: 0.0
     rc_hz: 0.0
-    motor_hz: 0.0
+    motor_hz: 0.01
     thrust:
       max : 44.0  # Max thrust to send to platform (N)
       min : 0.15  # Min thrust to send to platform (N)

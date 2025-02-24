@@ -196,6 +196,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
+  debug_motors_pub_ = this->create_publisher<geometry_msgs::msg::Quaternion>("debug/motors", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_.layout.dim.clear();
 
@@ -394,7 +395,14 @@ void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  std::cout << "Motor: " << motor << std::endl;
+  // std::cout << "Motor: " << motor << std::endl;
+  geometry_msgs::msg::Quaternion motor_msg;
+  motor_msg.set__x(motor.motor[0]);
+  motor_msg.set__y(motor.motor[1]);
+  motor_msg.set__z(motor.motor[2]);
+  motor_msg.set__w(motor.motor[3]);
+  debug_motors_pub_->publish(motor_msg);
+
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
