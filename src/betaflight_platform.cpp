@@ -397,19 +397,23 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
   std::cout << "Motor: " << motor << std::endl;
   std_msgs::msg::UInt16MultiArray debug_motor_msg;
+  debug_motor_msg.layout.dim.resize(1);
   debug_motor_msg.layout.dim[0].size = 8;
-  debug_motor_msg.data.resize(8);
-  debug_motor_msg.data[0] = motor.motor[0];
-  debug_motor_msg.data[1] = motor.motor[1];
-  debug_motor_msg.data[2] = motor.motor[2];
-  debug_motor_msg.data[3] = motor.motor[3];
-  debug_motor_msg.data[4] = motor.motor[4];
-  debug_motor_msg.data[5] = motor.motor[5];
-  debug_motor_msg.data[6] = motor.motor[6];
-  debug_motor_msg.data[7] = motor.motor[7];
+  debug_motor_msg.data.reserve(8);
+  // debug_motor_msg.data[0] = motor.motor[0];
+  // debug_motor_msg.data[1] = motor.motor[1];
+  // debug_motor_msg.data[2] = motor.motor[2];
+  // debug_motor_msg.data[3] = motor.motor[3];
+  // debug_motor_msg.data[4] = motor.motor[4];
+  // debug_motor_msg.data[5] = motor.motor[5];
+  // debug_motor_msg.data[6] = motor.motor[6];
+  // debug_motor_msg.data[7] = motor.motor[7];
   std::cout << "Motor data stored for M1:" << debug_motor_msg.data[0] << std::endl;
   debug_motors_pub_->publish(debug_motor_msg);
 
+  for (auto motor_value:motor.motor) {
+    debug_motor_msg.data.emplace_back(motor_value);
+  }
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
