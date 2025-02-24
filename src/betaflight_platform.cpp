@@ -66,8 +66,13 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<int>("baudrate");
   this->declare_parameter<bool>("external_odom");
 
+  // IMU config parameters
+  this->declare_parameter<float>("imu.frequency");
+  this->declare_parameter<float>("imu.covariance.gyro");
+  this->declare_parameter<float>("imu.covariance.accel");
+  this->declare_parameter<float>("imu.covariance.orientation");
+
   // Set publishers frequency. Set frequency to 0 to disable publication
-  this->declare_parameter<float>("imu_hz");
   this->declare_parameter<float>("battery_hz");
   this->declare_parameter<float>("altitude_hz");
   this->declare_parameter<float>("rc_hz");
@@ -104,7 +109,11 @@ void BetaflightPlatform::readParameters()
   baudrate_ = this->get_parameter("baudrate").as_int();
   external_odom_ = this->get_parameter("external_odom").as_bool();
 
-  imu_hz_ = this->get_parameter("imu_hz").as_double();
+  imu_hz_ = this->get_parameter("imu.frequency").as_double();
+  imu_gyro_covariance_ = this->get_parameter("imu.covariance.gyro").as_double();
+  imu_accel_covariance_ = this->get_parameter("imu.covariance.accel").as_double();
+  imu_orientation_covariance_ = this->get_parameter("imu.covariance.orientation").as_double();
+
   battery_hz_ = this->get_parameter("battery_hz").as_double();
   altitude_hz_ = this->get_parameter("altitude_hz").as_double();
   rc_hz_ = this->get_parameter("rc_hz").as_double();
@@ -353,17 +362,17 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_msg.angular_velocity.z = imu_si.gyro[2] / 180.0 * M_PI;
 
   std::array<double, 9> gyro_covariance =
-  {0.005 / 180.0 * M_PI, 0.0, 0.0,
-    0.0, 0.005 / 180.0 * M_PI, 0.0,
-    0.0, 0.0, 0.005 / 180.0 * M_PI};
+  {imu_gyro_covariance_ / 180.0 * M_PI, 0.0, 0.0,
+    0.0, imu_gyro_covariance_ / 180.0 * M_PI, 0.0,
+    0.0, 0.0, imu_gyro_covariance_ / 180.0 * M_PI};
   std::array<double, 9> accel_covariance =
-  {0.0004, 0.0, 0.0,
-    0.0, 0.0004, 0.0,
-    0.0, 0.0, 0.0004};
+  {imu_accel_covariance_, 0.0, 0.0,
+    0.0, imu_accel_covariance_, 0.0,
+    0.0, 0.0, imu_accel_covariance_};
   std::array<double, 9> ori_covariance =
-  {99999.9, 0.0, 0.0,
-    0.0, 99999.9, 0.0,
-    0.0, 0.0, 99999.9};
+  {imu_orientation_covariance_, 0.0, 0.0,
+    0.0, imu_orientation_covariance_, 0.0,
+    0.0, 0.0, imu_orientation_covariance_};
   imu_msg.angular_velocity_covariance = gyro_covariance;
   imu_msg.linear_acceleration_covariance = accel_covariance;
   imu_msg.orientation_covariance = ori_covariance;

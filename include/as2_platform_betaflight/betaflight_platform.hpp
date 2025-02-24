@@ -168,6 +168,10 @@ private:
   }
 
   double imu_hz_ = 0.0;
+  double imu_gyro_covariance_ = 99999.9;
+  double imu_accel_covariance_ = 99999.9;
+  double imu_orientation_covariance_ = 99999.9;
+
   double battery_hz_ = 0.0;
   double altitude_hz_ = 0.0;
   double rc_hz_ = 0.0;
