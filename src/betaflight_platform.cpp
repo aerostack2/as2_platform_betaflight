@@ -395,34 +395,15 @@ void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  std::cout << "Motor: " << motor << std::endl;
   std_msgs::msg::UInt16MultiArray debug_motor_msg;
-  std::cout << "Motor layout:" << std::endl;
   debug_motor_msg.layout.dim.reserve(1);
   debug_motor_msg.layout.dim[0].size = motor.motor.size();
-  // debug_motor_msg.data.resize(8);
-  // debug_motor_msg.data[0] = motor.motor[0];
-  // debug_motor_msg.data[1] = motor.motor[1];
-  // debug_motor_msg.data[2] = motor.motor[2];
-  // debug_motor_msg.data[3] = motor.motor[3];
-  // debug_motor_msg.data[4] = motor.motor[4];
-  // debug_motor_msg.data[5] = motor.motor[5];
-  // debug_motor_msg.data[6] = motor.motor[6];
-  // debug_motor_msg.data[7] = motor.motor[7];
-  std::cout << "Motor reserve:" << std::endl;
   debug_motor_msg.data.reserve(motor.motor.size());
-  // std::cout << "Motor:" << std::endl;
-  // for (int i = 0; i < 8; i++) {
-  //   std::cout << i << " " << motor.motor[i] << std::endl;
-  //   debug_motor_msg.data.push_back(motor.motor[i]);
-  // }
 
   for (auto motor_value:motor.motor) {
-    std::cout << "Value to be stored: " << motor_value << std::endl;
     debug_motor_msg.data.emplace_back(motor_value);
   }
 
-  std::cout << "Motor data stored for M1:" << debug_motor_msg.data[0] << std::endl;
   debug_motors_pub_->publish(debug_motor_msg);
 }
 
