@@ -400,7 +400,7 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
   debug_motor_msg.layout.dim[0].size = motor.motor.size();
   debug_motor_msg.data.reserve(motor.motor.size());
 
-  for (auto motor_value:motor.motor) {
+  for (auto motor_value : motor.motor) {
     debug_motor_msg.data.emplace_back(motor_value);
   }
 
