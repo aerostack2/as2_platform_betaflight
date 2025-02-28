@@ -6,14 +6,15 @@
     device: "/dev/ttyTHS1"  # Serial port to connect to the Platform
     baudrate: 115200 # Baudrate of the serial port
     imu: 
-      frequency: 0.00625
+      frequency: 0.00625  # Hz of IMU measures publication
       covariance:
-        gyro: 0.005
-        accel: 0.0004
-    battery_hz: 0.02
-    altitude_hz: 0.0
-    rc_hz: 0.0
-    motor_hz: 0.01
+        gyro: 0.0  # IMU gyroscope mean noise (set to 0 for not calibrated)
+        accel: 0.0  # IMU accelerometer mean noise (set to 0 for not calibrated)
+        orientation: 0.0 # IMU orientation mean noise (set to 0 for not calibrated)
+    battery_hz: 0.02  # Hz of battery measures publication
+    altitude_hz: 0.0  # Hz of altitude measures publication (set to 0 to disable publication)
+    rc_hz: 0.0  # Hz of RC measures publication (set to 0 to disable publication)
+    motor_hz: 0.01  # Hz of motor individual throttles measures publication
     thrust:
       max : 44.0  # Max thrust to send to platform (N)
       min : 0.15  # Min thrust to send to platform (N)
@@ -27,13 +28,13 @@
       max : 360.0  # Max yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
       min : -360.0  # Min yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
     use_thrust_map: false # Flag to use thrust map
-    thrust_map: 
-      a: -1769.3480036499736
-      b: 222.44476103204255
-      c: 239.37152766217667
-      d: -3.506179846097005
-      e: -4.984424633091574
-      f: -5.0140325087477775
+    thrust_map:  # thrust map poly coefficients from fitted surface to benchmark data
+      a: 0.0
+      b: 0.0
+      c: 0.0
+      d: 0.0
+      e: 0.0
+      f: 0.0
 
     limit_output: true  # Flag to limit the output of the platform
     limit_roll_percent: 1.0 # Limit of roll command in percent (between 0 and 1)
