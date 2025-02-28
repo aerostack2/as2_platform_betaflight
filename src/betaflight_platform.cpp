@@ -66,6 +66,18 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<int>("baudrate");
   this->declare_parameter<bool>("external_odom");
 
+  // IMU config parameters
+  this->declare_parameter<float>("imu.frequency");
+  this->declare_parameter<float>("imu.covariance.gyro");
+  this->declare_parameter<float>("imu.covariance.accel");
+  this->declare_parameter<float>("imu.covariance.orientation");
+
+  // Set publishers frequency. Set frequency to 0 to disable publication
+  this->declare_parameter<float>("battery_hz");
+  this->declare_parameter<float>("altitude_hz");
+  this->declare_parameter<float>("rc_hz");
+  this->declare_parameter<float>("motor_hz");
+
   this->declare_parameter<float>("yaw_rate.min");
   this->declare_parameter<float>("yaw_rate.max");
   this->declare_parameter<float>("pitch_rate.min");
@@ -96,6 +108,16 @@ void BetaflightPlatform::readParameters()
   device_ = this->get_parameter("device").as_string();
   baudrate_ = this->get_parameter("baudrate").as_int();
   external_odom_ = this->get_parameter("external_odom").as_bool();
+
+  imu_hz_ = this->get_parameter("imu.frequency").as_double();
+  imu_gyro_covariance_ = this->get_parameter("imu.covariance.gyro").as_double();
+  imu_accel_covariance_ = this->get_parameter("imu.covariance.accel").as_double();
+  imu_orientation_covariance_ = this->get_parameter("imu.covariance.orientation").as_double();
+
+  battery_hz_ = this->get_parameter("battery_hz").as_double();
+  altitude_hz_ = this->get_parameter("altitude_hz").as_double();
+  rc_hz_ = this->get_parameter("rc_hz").as_double();
+  motor_hz_ = this->get_parameter("motor_hz").as_double();
 
   max_thrust_ = this->get_parameter("thrust.max").as_double();
   min_thrust_ = this->get_parameter("thrust.min").as_double();
@@ -165,15 +187,16 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  fcu_.subscribe(&BetaflightPlatform::onImu, this, 0.01);
-  fcu_.subscribe(&BetaflightPlatform::onBattery, this, 0.02);
-  // fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 0.1);
-  // fcu_.subscribe(&BetaflightPlatform::onMotor, this, 0.1);
-  // fcu_.subscribe(&BetaflightPlatform::onRc, this, 0.1);
+  if (imu_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onImu, this, imu_hz_);}
+  if (battery_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onBattery, this, battery_hz_);}
+  if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
+  if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
+  if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
+  debug_motors_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/motors", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_.layout.dim.clear();
 
@@ -340,17 +363,17 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_msg.angular_velocity.z = imu_si.gyro[2] / 180.0 * M_PI;
 
   std::array<double, 9> gyro_covariance =
-  {0.005 / 180.0 * M_PI, 0.0, 0.0,
-    0.0, 0.005 / 180.0 * M_PI, 0.0,
-    0.0, 0.0, 0.005 / 180.0 * M_PI};
+  {imu_gyro_covariance_ / 180.0 * M_PI, 0.0, 0.0,
+    0.0, imu_gyro_covariance_ / 180.0 * M_PI, 0.0,
+    0.0, 0.0, imu_gyro_covariance_ / 180.0 * M_PI};
   std::array<double, 9> accel_covariance =
-  {0.0004, 0.0, 0.0,
-    0.0, 0.0004, 0.0,
-    0.0, 0.0, 0.0004};
+  {imu_accel_covariance_, 0.0, 0.0,
+    0.0, imu_accel_covariance_, 0.0,
+    0.0, 0.0, imu_accel_covariance_};
   std::array<double, 9> ori_covariance =
-  {99999.9, 0.0, 0.0,
-    0.0, 99999.9, 0.0,
-    0.0, 0.0, 99999.9};
+  {imu_orientation_covariance_, 0.0, 0.0,
+    0.0, imu_orientation_covariance_, 0.0,
+    0.0, 0.0, imu_orientation_covariance_};
   imu_msg.angular_velocity_covariance = gyro_covariance;
   imu_msg.linear_acceleration_covariance = accel_covariance;
   imu_msg.orientation_covariance = ori_covariance;
@@ -365,14 +388,23 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   imu_sensor_ptr_->updateAndPublish(imu_msg);
 }
 
-// void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
-// {
-//   std::cout << "Altitude: " << altitude << std::endl;
-// }
+void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
+{
+  std::cout << "Altitude: " << altitude << std::endl;
+}
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  // std::cout << "Motor: " << motor << std::endl;
+  std_msgs::msg::UInt16MultiArray debug_motor_msg;
+  debug_motor_msg.layout.dim.reserve(1);
+  debug_motor_msg.layout.dim[0].size = motor.motor.size();
+  debug_motor_msg.data.reserve(motor.motor.size());
+
+  for (auto motor_value : motor.motor) {
+    debug_motor_msg.data.emplace_back(motor_value);
+  }
+
+  debug_motors_pub_->publish(debug_motor_msg);
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)

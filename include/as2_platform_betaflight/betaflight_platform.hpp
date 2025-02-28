@@ -167,6 +167,16 @@ private:
     channel_values_[RC_CHANNELS::YAW] = 1500;
   }
 
+  double imu_hz_ = 0.0;
+  double imu_gyro_covariance_ = 0.0;
+  double imu_accel_covariance_ = 0.0;
+  double imu_orientation_covariance_ = 0.0;
+
+  double battery_hz_ = 0.0;
+  double altitude_hz_ = 0.0;
+  double rc_hz_ = 0.0;
+  double motor_hz_ = 0.0;
+
   double max_thrust_;
   double min_thrust_;
   double min_roll_rate_;
@@ -211,6 +221,7 @@ private:
   // Debug rc publisher
   rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_motors_pub_;
   std_msgs::msg::UInt16MultiArray debug_rc_;
 
   void publishDebugRc()
