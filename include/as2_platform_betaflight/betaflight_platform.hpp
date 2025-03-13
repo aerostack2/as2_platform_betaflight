@@ -124,10 +124,7 @@ private:
   void onAltitude(const msp::msg::Altitude & altitude);
   void onMotor(const msp::msg::Motor & motor);
   void onBattery(const msp::msg::BatteryState & battery);
-  void onRc(const msp::msg::Rc & rc)
-  {
-    std::cout << "RC: " << rc << std::endl;
-  }
+  void onRc(const msp::msg::Rc & rc);
 
   void computeControlSlopes()
   {
@@ -219,7 +216,8 @@ private:
 
 private:
   // Debug rc publisher
-  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_command_pub_;
+  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_read_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
   rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_motors_pub_;
   std_msgs::msg::UInt16MultiArray debug_rc_;
@@ -230,7 +228,7 @@ private:
     debug_rc_.data = channel_values_;
 
     // Publish the message
-    debug_rc_pub_->publish(debug_rc_);
+    debug_rc_command_pub_->publish(debug_rc_);
   }
 };
 
