@@ -191,6 +191,7 @@ private:
   double yaw_slope_ = 0.0;
 
   double voltage_ = 0.0;
+  double alpha_voltage_ = 0.0;
 
   bool use_thrust_map_ = false;
   bool limit_output_ = false;
