@@ -436,11 +436,46 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
     debug_rc_msg.data.emplace_back(channel_value);
   }
 
-  if (debug_rc_msg.data[4] > 1500) {
-    ownSetArmingState(true);
-  }
+  rcArm(debug_rc_msg.data[4]);
+  rcOffboard(debug_rc_msg.data[5]);
 
   debug_rc_read_pub_->publish(debug_rc_msg);
+}
+
+void BetaflightPlatform::rcArm(int channel)
+{
+  RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
+  if (channel > 1500) {
+    if (!set_arm_) {
+      RCLCPP_INFO(this->get_logger(), "ARM received, arming...\n");
+      set_arm_ = true;
+      setOffboardControl(set_arm_);
+    }
+  } else {
+    if (set_arm_) {
+      RCLCPP_INFO(this->get_logger(), "DISARM received, disarming...\n");
+      set_arm_ = false;
+      setOffboardControl(set_arm_);
+    }
+  }
+}
+
+void BetaflightPlatform::rcOffboard(int channel)
+{
+  RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
+  if (channel > 1500) {
+    if (!set_offboard_) {
+      RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard ON...\n");
+      set_offboard_ = true;
+      setOffboardControl(set_offboard_);
+    }
+  } else {
+    if (set_offboard_) {
+      RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard OFF...\n");
+      set_offboard_ = false;
+      setOffboardControl(set_offboard_);
+    }
+  }
 }
 
 

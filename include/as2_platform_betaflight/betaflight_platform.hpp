@@ -135,7 +135,8 @@ private:
 
 private:
   bool manual_from_operator_ = false;
-  bool set_disarm_ = false;
+  bool set_arm_ = false;
+  bool set_offboard_ = false;
   geometry_msgs::msg::PoseStamped betaflight_vision_pose_msg_;
   geometry_msgs::msg::TwistStamped betaflight_vision_speed_msg_;
 
@@ -230,6 +231,9 @@ private:
     // Publish the message
     debug_rc_command_pub_->publish(debug_rc_);
   }
+
+  void rcArm(int arm);
+  void rcOffboard(int offboard);
 };
 
 }  // namespace as2_platform_betaflight
