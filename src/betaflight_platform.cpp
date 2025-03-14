@@ -436,6 +436,10 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
     debug_rc_msg.data.emplace_back(channel_value);
   }
 
+  if (debug_rc_msg.data[4] > 1500) {
+    ownSetArmingState(true);
+  }
+
   debug_rc_read_pub_->publish(debug_rc_msg);
 }
 
