@@ -192,6 +192,8 @@ private:
 
   double voltage_ = 0.0;
   double alpha_voltage_ = 0.0;
+  double min_cell_voltage_ = 3.7;
+  double max_cell_voltage_ = 4.2;
 
   bool use_thrust_map_ = false;
   bool limit_output_ = false;

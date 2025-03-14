@@ -79,6 +79,8 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("motor_hz");
 
   this->declare_parameter<float>("alpha_voltage");
+  this->declare_parameter<float>("min_cell_voltage");
+  this->declare_parameter<float>("max_cell_voltage");
 
   this->declare_parameter<float>("yaw_rate.min");
   this->declare_parameter<float>("yaw_rate.max");
@@ -122,6 +124,8 @@ void BetaflightPlatform::readParameters()
   motor_hz_ = this->get_parameter("motor_hz").as_double();
 
   alpha_voltage_ = this->get_parameter("alpha_voltage").as_double();
+  min_cell_voltage_ = this->get_parameter("min_cell_voltage").as_double();
+  max_cell_voltage_ = this->get_parameter("max_cell_voltage").as_double();
 
   max_thrust_ = this->get_parameter("thrust.max").as_double();
   min_thrust_ = this->get_parameter("thrust.min").as_double();
@@ -414,19 +418,20 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
 {
   float voltage_filtered = alpha_voltage_ * voltage_ + (1 - alpha_voltage_) * battery.voltage;
+  float max_batt_voltage = max_cell_voltage_ * battery.cell_count;
+  float min_batt_voltage = min_cell_voltage_ * battery.cell_count;
 
   sensor_msgs::msg::BatteryState battery_msg;
   battery_msg.header.stamp = this->get_clock()->now();
   battery_msg.voltage = voltage_filtered;
   battery_msg.current = battery.amperage;
-  battery_msg.percentage = voltage_filtered / (battery.cell_count * 4.2);
+  battery_msg.percentage = (voltage_filtered - min_batt_voltage) /
+    (max_batt_voltage - min_batt_voltage);
   battery_msg.charge = battery.capacity_mAh;
 
   battery_sensor_ptr_->updateData(battery_msg);
 
   voltage_ = voltage_filtered;
-
-  // std::cout << "Battery: " << battery << std::endl;
 }
 
 
