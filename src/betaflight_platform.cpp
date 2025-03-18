@@ -444,25 +444,25 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
 
 void BetaflightPlatform::rcArm(int channel)
 {
-  RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
+  // RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
   if (channel > 1500) {
     if (!set_arm_) {
       RCLCPP_INFO(this->get_logger(), "ARM received, arming...\n");
       set_arm_ = true;
-      setOffboardControl(set_arm_);
+      setArmingState(set_arm_);
     }
   } else {
     if (set_arm_) {
       RCLCPP_INFO(this->get_logger(), "DISARM received, disarming...\n");
       set_arm_ = false;
-      setOffboardControl(set_arm_);
+      setArmingState(set_arm_);
     }
   }
 }
 
 void BetaflightPlatform::rcOffboard(int channel)
 {
-  RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
+  // RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
   if (channel > 1500) {
     if (!set_offboard_) {
       RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard ON...\n");
