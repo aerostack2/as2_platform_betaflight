@@ -202,7 +202,9 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
-  debug_rc_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc", 1);
+  debug_rc_command_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>(
+    "debug/rc/command", 1);
+  debug_rc_read_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc/read", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
   debug_motors_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/motors", 1);
   // Clear layout dimensions if they were set in a previous publication
@@ -432,6 +434,59 @@ void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
   battery_sensor_ptr_->updateData(battery_msg);
 
   voltage_ = voltage_filtered;
+}
+
+void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
+{
+  std_msgs::msg::UInt16MultiArray debug_rc_msg;
+  debug_rc_msg.layout.dim.reserve(1);
+  debug_rc_msg.layout.dim[0].size = rc.channels.size();
+  debug_rc_msg.data.reserve(rc.channels.size());
+
+  for (auto channel_value : rc.channels) {
+    debug_rc_msg.data.emplace_back(channel_value);
+  }
+
+  rcArm(debug_rc_msg.data[4]);
+  rcOffboard(debug_rc_msg.data[5]);
+
+  debug_rc_read_pub_->publish(debug_rc_msg);
+}
+
+void BetaflightPlatform::rcArm(int channel)
+{
+  // RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
+  if (channel > 1500) {
+    if (!set_arm_) {
+      RCLCPP_INFO(this->get_logger(), "ARM received, arming...\n");
+      set_arm_ = true;
+      setArmingState(set_arm_);
+    }
+  } else {
+    if (set_arm_) {
+      RCLCPP_INFO(this->get_logger(), "DISARM received, disarming...\n");
+      set_arm_ = false;
+      setArmingState(set_arm_);
+    }
+  }
+}
+
+void BetaflightPlatform::rcOffboard(int channel)
+{
+  // RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
+  if (channel > 1500) {
+    if (!set_offboard_) {
+      RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard ON...\n");
+      set_offboard_ = true;
+      setOffboardControl(set_offboard_);
+    }
+  } else {
+    if (set_offboard_) {
+      RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard OFF...\n");
+      set_offboard_ = false;
+      setOffboardControl(set_offboard_);
+    }
+  }
 }
 
 
