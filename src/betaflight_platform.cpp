@@ -202,20 +202,23 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
-  debug_rc_command_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>(
+  debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/rc/command", 1);
-  debug_rc_read_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/rc/read", 1);
+  debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+    "debug/rc/read", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
-  debug_motors_pub_ = this->create_publisher<std_msgs::msg::UInt16MultiArray>("debug/motors", 1);
+  debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+    "debug/motors",
+    1);
   // Clear layout dimensions if they were set in a previous publication
-  debug_rc_.layout.dim.clear();
+  debug_rc_command_.layout.dim.clear();
 
   // Configure the array layout
   std_msgs::msg::MultiArrayDimension dim;
   dim.size = channel_values_.size();
   dim.stride = 1;
   dim.label = "rc_channels";
-  debug_rc_.layout.dim.push_back(dim);
+  debug_rc_command_.layout.dim.push_back(dim);
   publishDebugRc();
 }
 
@@ -360,10 +363,7 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
   raw_imu_pub_->publish(imu_raw);
 
   // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
-  //
-  const double acc_1G = 512.0f;
-  const double gyro_scale = 1.0f / 16.0f;
-  const msp::msg::ImuSI imu_si(imu, acc_1G, gyro_scale, 0.092, 9.80665);
+  const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
 
   // raw imu data without orientation
   sensor_msgs::msg::Imu imu_msg;
@@ -408,7 +408,7 @@ void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
-  std_msgs::msg::UInt16MultiArray debug_motor_msg;
+  as2_msgs::msg::UInt16MultiArrayStamped debug_motor_msg;
   debug_motor_msg.layout.dim.reserve(1);
   debug_motor_msg.layout.dim[0].size = motor.motor.size();
   debug_motor_msg.data.reserve(motor.motor.size());
@@ -417,6 +417,7 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
     debug_motor_msg.data.emplace_back(motor_value);
   }
 
+  debug_motor_msg.stamp = this->now();
   debug_motors_pub_->publish(debug_motor_msg);
 }
 
@@ -441,7 +442,7 @@ void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
 
 void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
 {
-  std_msgs::msg::UInt16MultiArray debug_rc_msg;
+  as2_msgs::msg::UInt16MultiArrayStamped debug_rc_msg;
   debug_rc_msg.layout.dim.reserve(1);
   debug_rc_msg.layout.dim[0].size = rc.channels.size();
   debug_rc_msg.data.reserve(rc.channels.size());
@@ -453,7 +454,18 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
   rcArm(debug_rc_msg.data[4]);
   rcOffboard(debug_rc_msg.data[5]);
 
+  debug_rc_msg.stamp = this->now();
   debug_rc_read_pub_->publish(debug_rc_msg);
+}
+
+void BetaflightPlatform::publishDebugRc()
+{
+  // Assign the values from `channel_values_` to the `debug_rc_` message
+  debug_rc_command_.data = channel_values_;
+
+  // Publish the message
+  debug_rc_command_.stamp = this->now();
+  debug_rc_command_pub_->publish(debug_rc_command_);
 }
 
 void BetaflightPlatform::rcArm(int channel)
