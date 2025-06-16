@@ -39,10 +39,11 @@
       d: 0.0
       e: 0.0
       f: 0.0
-      use_correction_factor: false
-      gamma2: 0.0
-      gamma1: 0.0
-      gamma0: 0.0
+      use_correction_factor: false # Flag to activate estimated thrust correction
+      # Gamma(V) = gamma2*V*V + gamma1*V + gamma0
+      gamma2: 0.0 # Coefficient for voltage squared
+      gamma1: 0.0 # Coefficient for voltage
+      gamma0: 0.0 # Constant term
 
     limit_output: true  # Flag to limit the output of the platform
     limit_roll_percent: 1.0 # Limit of roll command in percent (between 0 and 1)
