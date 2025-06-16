@@ -98,6 +98,10 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("thrust_map.d");
   this->declare_parameter<float>("thrust_map.e");
   this->declare_parameter<float>("thrust_map.f");
+  this->declare_parameter<bool>("thrust_map.use_correction_factor");
+  this->declare_parameter<float>("thrust_map.gamma2");
+  this->declare_parameter<float>("thrust_map.gamma1");
+  this->declare_parameter<float>("thrust_map.gamma0");
 
   this->declare_parameter<bool>("limit_output");
   this->declare_parameter<float>("limit_roll_percent");
@@ -144,7 +148,11 @@ void BetaflightPlatform::readParameters()
     this->get_parameter("thrust_map.c").as_double(),
     this->get_parameter("thrust_map.d").as_double(),
     this->get_parameter("thrust_map.e").as_double(),
-    this->get_parameter("thrust_map.f").as_double());
+    this->get_parameter("thrust_map.f").as_double(),
+    this->get_parameter("thrust_map.use_correction_factor").as_bool(),
+    this->get_parameter("thrustmap.gamma2").as_double(),
+    this->get_parameter("thrustmap.gamma1").as_double(),
+    this->get_parameter("thrustmap.gamma0").as_double());
 
   limit_output_ = this->get_parameter("limit_output").as_bool();
   limit_roll_percent_ = this->get_parameter("limit_roll_percent").as_double();
