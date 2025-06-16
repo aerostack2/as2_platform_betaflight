@@ -57,7 +57,9 @@ public:
       gamma0), use_correction_factor(use_correction_factor)
   {}
 
-  void set_parameters(double a, double b, double c, double d, double e, double f)
+  void set_parameters(
+    double a, double b, double c, double d, double e, double f,
+    bool use_correction_factor, double gamma2, double gamma1, double gamma0)
   {
     this->a = a;
     this->b = b;
