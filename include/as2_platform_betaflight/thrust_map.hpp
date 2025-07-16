@@ -47,15 +47,19 @@ class ThrustMap
 {
 public:
   explicit ThrustMap(unsigned int n_motors)
-  : a(0.0), b(0.0), c(0.0), d(0.0), e(0.0), f(0.0), n_motors(n_motors)
+  : a(0.0), b(0.0), c(0.0), d(0.0), e(0.0), f(0.0), n_motors(n_motors), gamma2(0.0), gamma1(0.0),
+    gamma0(0.0), use_correction_factor(false)
   {}
   explicit ThrustMap(
     unsigned int n_motors, double a, double b, double c, double d, double e,
-    double f)
-  : a(a), b(b), c(c), d(d), e(e), f(f)
+    double f, double gamma2, double gamma1, double gamma0, bool use_correction_factor)
+  : a(a), b(b), c(c), d(d), e(e), f(f), n_motors(n_motors), gamma2(gamma2), gamma1(gamma1), gamma0(
+      gamma0), use_correction_factor(use_correction_factor)
   {}
 
-  void set_parameters(double a, double b, double c, double d, double e, double f)
+  void set_parameters(
+    double a, double b, double c, double d, double e, double f,
+    bool use_correction_factor, double gamma2, double gamma1, double gamma0)
   {
     this->a = a;
     this->b = b;
@@ -63,6 +67,10 @@ public:
     this->d = d;
     this->e = e;
     this->f = f;
+    this->use_correction_factor = use_correction_factor;
+    this->gamma2 = gamma2;
+    this->gamma1 = gamma1;
+    this->gamma0 = gamma0;
   }
 
   friend std::ostream & operator<<(std::ostream & os, const ThrustMap & tm)
@@ -74,8 +82,15 @@ public:
 
   std::string to_string() const
   {
-    return "ThrustMap: " + std::to_string(a) + " " + std::to_string(b) + " " + std::to_string(c) +
-           " " + std::to_string(d) + " " + std::to_string(e) + " " + std::to_string(f);
+    if (!use_correction_factor) {
+      return "ThrustMap: " + std::to_string(a) + " " + std::to_string(b) + " " + std::to_string(c) +
+             " " + std::to_string(d) + " " + std::to_string(e) + " " + std::to_string(f);
+    } else {
+      return "ThrustMap: " + std::to_string(a) + " " + std::to_string(b) + " " + std::to_string(c) +
+             " " + std::to_string(d) + " " + std::to_string(e) + " " + std::to_string(f) +
+             "\nCorrection factor: " + std::to_string(gamma2) + " " + std::to_string(gamma1) + " " +
+             std::to_string(gamma0);
+    }
   }
 
   double mapThrust(double thrust, double voltage)
@@ -90,6 +105,12 @@ public:
   uint16_t getThrottle_useconds(double thrust, double voltage)
   {
     double thrust_per_motor = thrust / static_cast<double>(n_motors);
+
+    if (use_correction_factor) {
+      double gamma = gamma2 * voltage * voltage + gamma1 * voltage + gamma0;
+      thrust_per_motor = gamma * thrust_per_motor;
+    }
+
     uint16_t throttle = static_cast<uint16_t>(mapThrust(thrust_per_motor, voltage));
     throttle = (throttle < 1000) ? 1000 : throttle;
     throttle = (throttle > 2000) ? 2000 : throttle;
@@ -106,6 +127,8 @@ public:
 private:
   double a, b, c, d, e, f;
   uint n_motors;
+  double gamma2, gamma1, gamma0;
+  bool use_correction_factor;
 };
 
 

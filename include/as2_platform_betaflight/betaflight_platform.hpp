@@ -57,6 +57,7 @@
 #include <sensor_msgs/msg/nav_sat_status.hpp>
 #include <std_msgs/msg/u_int16_multi_array.hpp>
 
+#include "as2_msgs/msg/u_int16_multi_array_stamped.hpp"
 #include "as2_core/aerial_platform.hpp"
 #include "as2_core/sensor.hpp"
 #include "as2_core/utils/tf_utils.hpp"
@@ -220,21 +221,13 @@ private:
 
 private:
   // Debug rc publisher
-  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_command_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_rc_read_pub_;
+  rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_command_pub_;
+  rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_read_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
-  rclcpp::Publisher<std_msgs::msg::UInt16MultiArray>::SharedPtr debug_motors_pub_;
-  std_msgs::msg::UInt16MultiArray debug_rc_;
+  rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_motors_pub_;
+  as2_msgs::msg::UInt16MultiArrayStamped debug_rc_command_;
 
-  void publishDebugRc()
-  {
-    // Assign the values from `channel_values_` to the `debug_rc_` message
-    debug_rc_.data = channel_values_;
-
-    // Publish the message
-    debug_rc_command_pub_->publish(debug_rc_);
-  }
-
+  void publishDebugRc();
   void rcArm(int arm);
   void rcOffboard(int offboard);
 };
