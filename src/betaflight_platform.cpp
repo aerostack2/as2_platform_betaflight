@@ -315,12 +315,6 @@ bool BetaflightPlatform::ownSendCommand()
   channel_values_[RC_CHANNELS::THROTTLE] = throttle_pulse;
   channel_values_[RC_CHANNELS::YAW] = yaw_pulse;
 
-  // print the values for debugging
-  // std::cout << "Channel values: ";
-  // for (auto & value : channel_values_) {
-  //   std::cout << value << " ";
-  // }
-  // std::cout << std::endl;
   publishDebugRc();
 
   bool out = fcu_.setRc(channel_values_);
