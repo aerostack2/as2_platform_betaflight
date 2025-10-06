@@ -457,7 +457,7 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
   }
 
   rcArm(debug_rc_msg.data[4]);
-  rcOffboard(debug_rc_msg.data[5]);
+  rcOffboard(debug_rc_msg.data[6]);
 
   debug_rc_msg.stamp = this->now();
   debug_rc_read_pub_->publish(debug_rc_msg);
