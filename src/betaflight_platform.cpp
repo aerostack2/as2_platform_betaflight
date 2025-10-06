@@ -366,7 +366,7 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 
   // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
   // const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
-  const double acc_1G = 512.0f * 4.0f;
+  const double acc_1G = 512.0f;
   const double gyro_scale = 1.0f / 16.0f;
   const msp::msg::ImuSI imu_si(imu, acc_1G, gyro_scale, 0.092, 9.80665);
 
