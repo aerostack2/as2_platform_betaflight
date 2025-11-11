@@ -474,9 +474,10 @@ void BetaflightPlatform::onEsc(const msp::msg::EscSensorData & esc)
   for( auto data : esc.esc_data )
   {
     motor_rpm.push_back(data.rpm);
-    // motor_temperature.push_back(data.temperature);
+    motor_temperature.push_back(data.temperature);
   }
   RCLCPP_INFO(this->get_logger(), "Motor RPM: [%d, %d, %d, %d]", motor_rpm[0], motor_rpm[1], motor_rpm[2], motor_rpm[3]);
+  RCLCPP_INFO(this->get_logger(), "Motor Temperature: [%d, %d, %d, %d]", temperature[0], temperature[1], temperature[2], temperature[3]);
 }
 
 void BetaflightPlatform::publishDebugRc()
