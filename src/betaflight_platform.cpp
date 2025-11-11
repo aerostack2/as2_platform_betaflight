@@ -77,6 +77,7 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("altitude_hz");
   this->declare_parameter<float>("rc_hz");
   this->declare_parameter<float>("motor_hz");
+  this->declare_parameter<float>("esc_hz");
 
   this->declare_parameter<float>("alpha_voltage");
   this->declare_parameter<float>("min_cell_voltage");
@@ -126,6 +127,7 @@ void BetaflightPlatform::readParameters()
   altitude_hz_ = this->get_parameter("altitude_hz").as_double();
   rc_hz_ = this->get_parameter("rc_hz").as_double();
   motor_hz_ = this->get_parameter("motor_hz").as_double();
+  esc_hz_ = this->get_parameter("esc_hz").as_double();
 
   alpha_voltage_ = this->get_parameter("alpha_voltage").as_double();
   min_cell_voltage_ = this->get_parameter("min_cell_voltage").as_double();
@@ -208,6 +210,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
   if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
   if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
+  if (esc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onEsc, this, 1.0/esc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
@@ -461,6 +464,11 @@ void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
 
   debug_rc_msg.stamp = this->now();
   debug_rc_read_pub_->publish(debug_rc_msg);
+}
+
+void BetaflightPlatform::onEsc(const msp::msg::EscSensorData & esc)
+{
+  RCLCPP_INFO(this->get_logger(), "Received message from ESC!");
 }
 
 void BetaflightPlatform::publishDebugRc()

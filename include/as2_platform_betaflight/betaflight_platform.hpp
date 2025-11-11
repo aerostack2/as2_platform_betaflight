@@ -126,6 +126,7 @@ private:
   void onMotor(const msp::msg::Motor & motor);
   void onBattery(const msp::msg::BatteryState & battery);
   void onRc(const msp::msg::Rc & rc);
+  void onEsc(const msp::msg::EscSensorData & esc);
 
   void computeControlSlopes()
   {
@@ -175,6 +176,7 @@ private:
   double altitude_hz_ = 0.0;
   double rc_hz_ = 0.0;
   double motor_hz_ = 0.0;
+  double esc_hz_ = 0.0;
 
   double max_thrust_;
   double min_thrust_;
