@@ -471,13 +471,18 @@ void BetaflightPlatform::onEsc(const msp::msg::EscSensorData & esc)
   RCLCPP_INFO(this->get_logger(), "Received message from ESC!");
   std::vector<uint16_t> motor_rpm;
   std::vector<uint8_t> motor_temperature;
-  for( auto data : esc.esc_data )
+  // for( auto data : esc.esc_data )
+  // {
+  //   motor_rpm.push_back(data.rpm);
+  //   motor_temperature.push_back(data.temperature);
+  // }
+  for(int i = 0; i <= esc.motor_count-1 ; ++i)
   {
-    motor_rpm.push_back(data.rpm);
-    motor_temperature.push_back(data.temperature);
+    motor_rpm.push_back(esc.esc_data[i].rpm);
+    motor_temperature.push_back(esc.esc_data[i].temperature);
   }
-  RCLCPP_INFO(this->get_logger(), "Motor RPM: [%d, %d, %d, %d]", motor_rpm[0], motor_rpm[1], motor_rpm[2], motor_rpm[3]);
-  RCLCPP_INFO(this->get_logger(), "Motor Temperature: [%d, %d, %d, %d]", motor_temperature[0], motor_temperature[1], motor_temperature[2], motor_temperature[3]);
+  RCLCPP_INFO(this->get_logger(), "Motor RPM: [%i, %i, %i, %i]", motor_rpm[0], motor_rpm[1], motor_rpm[2], (motor_rpm[3]);
+  RCLCPP_INFO(this->get_logger(), "Motor Temperature: [%i, %i, %i, %i]", motor_temperature[0], motor_temperature[1], motor_temperature[2], motor_temperature[3]);
 }
 
 void BetaflightPlatform::publishDebugRc()
