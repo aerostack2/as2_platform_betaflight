@@ -50,6 +50,7 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -63,6 +64,7 @@
 #include "as2_core/utils/tf_utils.hpp"
 #include "as2_core/synchronous_service_client.hpp"
 #include "as2_platform_betaflight/thrust_map.hpp"
+#include "as2_core/utils/frame_utils.hpp"
 
 #include <msp/FlightController.hpp>
 #include <msp/msp_msg.hpp>
@@ -123,6 +125,7 @@ private:
   void onBoxNames(const msp::msg::BoxNames & box_names);
   void onImu(const msp::msg::RawImu & imu);
   void onAltitude(const msp::msg::Altitude & altitude);
+  void onAttitude(const msp::msg::Attitude & attitude);
   void onMotor(const msp::msg::Motor & motor);
   void onBattery(const msp::msg::BatteryState & battery);
   void onRc(const msp::msg::Rc & rc);
@@ -173,6 +176,7 @@ private:
 
   double battery_hz_ = 0.0;
   double altitude_hz_ = 0.0;
+  double attitude_hz_ = 0.0;
   double rc_hz_ = 0.0;
   double motor_hz_ = 0.0;
 
@@ -224,6 +228,7 @@ private:
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_command_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_read_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr attitude_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_motors_pub_;
   as2_msgs::msg::UInt16MultiArrayStamped debug_rc_command_;
 

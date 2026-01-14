@@ -13,6 +13,7 @@
         orientation: 0.0 # IMU orientation mean noise (set to 0 for not calibrated)
     battery_hz: 0.02  # Hz of battery measures publication
     altitude_hz: 0.0  # Hz of altitude measures publication (set to 0 to disable publication)
+    attitude_hz: 0.0  # Hz of attitude measures publication (set to 0 to disable publication)
     rc_hz: 0.0  # Hz of RC measures publication (set to 0 to disable publication)
     motor_hz: 0.01  # Hz of motor individual throttles measures publication
     alpha_voltage: 0.0  # Filter for battery voltage measurements

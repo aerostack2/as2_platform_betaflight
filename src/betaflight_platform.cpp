@@ -75,6 +75,7 @@ void BetaflightPlatform::readParameters()
   // Set publishers frequency. Set frequency to 0 to disable publication
   this->declare_parameter<float>("battery_hz");
   this->declare_parameter<float>("altitude_hz");
+  this->declare_parameter<float>("attitude_hz");
   this->declare_parameter<float>("rc_hz");
   this->declare_parameter<float>("motor_hz");
 
@@ -124,6 +125,7 @@ void BetaflightPlatform::readParameters()
 
   battery_hz_ = this->get_parameter("battery_hz").as_double();
   altitude_hz_ = this->get_parameter("altitude_hz").as_double();
+  attitude_hz_ = this->get_parameter("attitude_hz").as_double();
   rc_hz_ = this->get_parameter("rc_hz").as_double();
   motor_hz_ = this->get_parameter("motor_hz").as_double();
 
@@ -205,6 +207,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
   if (imu_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onImu, this, imu_hz_);}
   if (battery_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onBattery, this, battery_hz_);}
+  if (attitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAttitude, this, attitude_hz_);}
   if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
   if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
   if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
@@ -215,6 +218,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/rc/read", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
+  attitude_pub_ = this->create_publisher<geometry_msgs::msg::QuaternionStamped>("attitude", 1);
   debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/motors",
     1);
@@ -409,6 +413,22 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 {
   std::cout << "Altitude: " << altitude << std::endl;
+}
+
+void BetaflightPlatform::onAttitude(const msp::msg::Attitude & attitude)
+{
+  geometry_msgs::msg::QuaternionStamped attitude_msg;
+  attitude_msg.header.stamp = this->get_clock()->now();
+  attitude_msg.header.frame_id = base_link_frame_id_;
+
+  // Convert Euler angles (degrees) to quaternion
+  double roll_rad = attitude.roll * M_PI / 180.0;
+  double pitch_rad = attitude.pitch * M_PI / 180.0;
+  double yaw_rad = attitude.yaw * M_PI / 180.0;
+
+  as2::frame::eulerToQuaternion(roll_rad, pitch_rad, yaw_rad, attitude_msg.quaternion);
+
+  attitude_pub_->publish(attitude_msg);
 }
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
