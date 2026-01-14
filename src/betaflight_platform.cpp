@@ -419,7 +419,7 @@ void BetaflightPlatform::onAttitude(const msp::msg::Attitude & attitude)
 {
   geometry_msgs::msg::QuaternionStamped attitude_msg;
   attitude_msg.header.stamp = this->get_clock()->now();
-  attitude_msg.header.frame_id = base_link_frame_id_;
+  attitude_msg.header.frame_id = odom_frame_id_;
 
   // Convert Euler angles (degrees) to quaternion
   double roll_rad = attitude.roll * M_PI / 180.0;
