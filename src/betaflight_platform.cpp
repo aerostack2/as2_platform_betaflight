@@ -43,7 +43,6 @@
 
 #include "as2_platform_betaflight/betaflight_platform.hpp"
 #include "msp/msp_msg.hpp"
-#include "thrust_map.hpp"
 
 double convert_deg_s_to_rad_s(double deg_s)
 {
@@ -423,7 +422,9 @@ void BetaflightPlatform::onAttitude(const msp::msg::Attitude & attitude)
   // print attitude
   RCLCPP_INFO(
     this->get_logger(), "Attitude: roll: %f, pitch: %f, yaw: %f",
-    attitude.roll, attitude.pitch, attitude.yaw);
+    static_cast<double>(attitude.roll),
+    static_cast<double>(attitude.pitch),
+    static_cast<double>(attitude.yaw));
 
   // Convert Euler angles (degrees) to quaternion
   double roll_rad = attitude.roll * M_PI / 180.0;

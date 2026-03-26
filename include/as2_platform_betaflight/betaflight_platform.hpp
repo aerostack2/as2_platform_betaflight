@@ -63,7 +63,7 @@
 #include "as2_core/sensor.hpp"
 #include "as2_core/utils/tf_utils.hpp"
 #include "as2_core/synchronous_service_client.hpp"
-#include "as2_platform_betaflight/thrust_map.hpp"
+#include "as2_core/thrust_map.hpp"
 #include "as2_core/utils/frame_utils.hpp"
 
 #include <msp/FlightController.hpp>
@@ -146,7 +146,7 @@ private:
 
   std::atomic<uint64_t> timestamp_;
   std::vector<uint16_t> channel_values_;
-  ThrustMap thrust_map_;
+  as2::ThrustMap thrust_map_;
 
   void initChannels()
   {
