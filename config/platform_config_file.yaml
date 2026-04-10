@@ -33,7 +33,9 @@
       min : -360.0  # Min yaw rate to send to platform (deg/s) # ATTENTION: this is in deg/s
     use_thrust_map: false # Flag to use lineal approximation (default) or polynomial thrust map 
     polynomial_thrust_map:  # thrust map poly coefficients from fitted surface to benchmark data
-    # F(x = Thrust, y = Voltage) = a+b*x+c*y+d*x**2+e*x*y+f*y**2
+      max_throttle: 2000.0
+      min_throttle: 1000.0
+      # F(x = Thrust, y = Voltage) = a+b*x+c*y+d*x**2+e*x*y+f*y**2
       a: 0.0
       b: 0.0
       c: 0.0
