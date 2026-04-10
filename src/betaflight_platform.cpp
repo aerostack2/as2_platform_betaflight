@@ -92,16 +92,6 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("thrust.max");
 
   this->declare_parameter<bool>("use_thrust_map");
-  this->declare_parameter<float>("thrust_map.a");
-  this->declare_parameter<float>("thrust_map.b");
-  this->declare_parameter<float>("thrust_map.c");
-  this->declare_parameter<float>("thrust_map.d");
-  this->declare_parameter<float>("thrust_map.e");
-  this->declare_parameter<float>("thrust_map.f");
-  this->declare_parameter<bool>("thrust_map.use_correction_factor");
-  this->declare_parameter<float>("thrust_map.gamma2");
-  this->declare_parameter<float>("thrust_map.gamma1");
-  this->declare_parameter<float>("thrust_map.gamma0");
 
   this->declare_parameter<bool>("limit_output");
   this->declare_parameter<float>("limit_roll_percent");
@@ -143,18 +133,6 @@ void BetaflightPlatform::readParameters()
 
   use_thrust_map_ = this->get_parameter("use_thrust_map").as_bool();
 
-  thrust_map_.set_parameters(
-    this->get_parameter("thrust_map.a").as_double(),
-    this->get_parameter("thrust_map.b").as_double(),
-    this->get_parameter("thrust_map.c").as_double(),
-    this->get_parameter("thrust_map.d").as_double(),
-    this->get_parameter("thrust_map.e").as_double(),
-    this->get_parameter("thrust_map.f").as_double(),
-    this->get_parameter("thrust_map.use_correction_factor").as_bool(),
-    this->get_parameter("thrust_map.gamma2").as_double(),
-    this->get_parameter("thrust_map.gamma1").as_double(),
-    this->get_parameter("thrust_map.gamma0").as_double());
-
   limit_output_ = this->get_parameter("limit_output").as_bool();
   limit_roll_percent_ = this->get_parameter("limit_roll_percent").as_double();
   limit_pitch_percent_ = this->get_parameter("limit_pitch_percent").as_double();
@@ -173,11 +151,6 @@ void BetaflightPlatform::readParameters()
   RCLCPP_INFO(this->get_logger(), "Yaw rate bounds: [%f, %f]", min_yaw_rate_, max_yaw_rate_);
   computeControlSlopes();
 
-
-  RCLCPP_INFO(this->get_logger(), "Using thrust map: %s", use_thrust_map_ ? "true" : "false");
-  if (use_thrust_map_) {
-    RCLCPP_INFO(this->get_logger(), "Thrust map: %s", thrust_map_.to_string().c_str());
-  }
   RCLCPP_INFO(this->get_logger(), "Limiting output: %s", limit_output_ ? "true" : "false");
   if (limit_output_) {
     RCLCPP_INFO(this->get_logger(), "Roll limit: %f", limit_roll_percent_);
@@ -189,11 +162,18 @@ void BetaflightPlatform::readParameters()
 
 
 BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
-: as2::AerialPlatform(options), thrust_map_(4)    // TODO(miferco97) hardcoded number of motors
+: as2::AerialPlatform(options), thrust_map_(4)
 {
   readParameters();
   configureSensors();
   initChannels();
+  if (use_thrust_map_) {
+    thrust_map_.initialize(this);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Thrust map disabled. Thrust will be mapped directly to throttle.");
+  }
 
   auto out = fcu_.connect(device_, baudrate_, 0.0, true);
   if (!out) {
@@ -253,7 +233,6 @@ bool BetaflightPlatform::ownSetArmingState(bool state)
 
 bool BetaflightPlatform::ownSetOffboardControl(bool offboard)
 {
-  // TODO(miferco97): check if this is correct
   return true;
 }
 
@@ -500,7 +479,6 @@ void BetaflightPlatform::publishDebugRc()
 
 void BetaflightPlatform::rcArm(int channel)
 {
-  // RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
   if (channel > 1500) {
     if (!set_arm_) {
       RCLCPP_INFO(this->get_logger(), "ARM received, arming...\n");
@@ -518,7 +496,6 @@ void BetaflightPlatform::rcArm(int channel)
 
 void BetaflightPlatform::rcOffboard(int channel)
 {
-  // RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
   if (channel > 1500) {
     if (!set_offboard_) {
       RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard ON...\n");
