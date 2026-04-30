@@ -15,6 +15,34 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# MSP dependency
+find_package(msp QUIET)
+
+if(NOT msp_FOUND)
+  message(STATUS "MSP library not found, fetching...")
+
+  include(FetchContent)
+FetchContent_Declare(
+  msp
+  GIT_REPOSITORY https://github.com/CVAR-A2RL/msp.git
+  GIT_TAG 16e199d123f36676aedaa9ba51ae90474de7d7f8
+)
+
+FetchContent_GetProperties(msp)
+if(NOT msp_POPULATED)
+  FetchContent_Populate(msp)
+
+  # Patch msp.pc installation directory
+  file(READ "${msp_SOURCE_DIR}/CMakeLists.txt" MSP_CMAKE)
+  string(REPLACE "CMAKE_BINARY_DIR" "CMAKE_CURRENT_BINARY_DIR" MSP_CMAKE "${MSP_CMAKE}")
+  file(WRITE "${msp_SOURCE_DIR}/CMakeLists.txt" "${MSP_CMAKE}")
+
+  add_subdirectory(${msp_SOURCE_DIR} ${msp_BINARY_DIR})
+endif()
+else()
+  message(STATUS "MSP library found")
+endif()
+
 # find dependencies
 set(PROJECT_DEPENDENCIES
   ament_cmake
