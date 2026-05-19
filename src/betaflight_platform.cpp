@@ -77,6 +77,7 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("attitude_hz");
   this->declare_parameter<float>("rc_hz");
   this->declare_parameter<float>("motor_hz");
+  this->declare_parameter<float>("motor_telemetry_hz");
 
   this->declare_parameter<float>("alpha_voltage");
   this->declare_parameter<float>("min_cell_voltage");
@@ -117,6 +118,7 @@ void BetaflightPlatform::readParameters()
   attitude_hz_ = this->get_parameter("attitude_hz").as_double();
   rc_hz_ = this->get_parameter("rc_hz").as_double();
   motor_hz_ = this->get_parameter("motor_hz").as_double();
+  motor_telemetry_hz_ = this->get_parameter("motor_telemetry_hz").as_double();
 
   alpha_voltage_ = this->get_parameter("alpha_voltage").as_double();
   min_cell_voltage_ = this->get_parameter("min_cell_voltage").as_double();
@@ -231,7 +233,11 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/rc/command", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
-
+  attitude_pub_ = this->create_publisher<geometry_msgs::msg::QuaternionStamped>("attitude", 1);
+  debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+    "debug/motors",
+    1);
+  motor_speed_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("motor_speed", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_command_.layout.dim.clear();
 
@@ -459,6 +465,26 @@ void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 
   debug_motor_msg.stamp = this->now();
   debug_motors_pub_->publish(debug_motor_msg);
+}
+
+void BetaflightPlatform::onMotorTelemetry(const msp::msg::MotorTelemetry & motor_telem)
+{
+  sensor_msgs::msg::JointState msg;
+  msg.header.stamp = this->get_clock()->now();
+  msg.header.frame_id = base_link_frame_id_;
+
+  const size_t n = motor_telem.motor_telemetry.size();
+  msg.name.resize(n);
+  msg.velocity.resize(n);
+  msg.effort.resize(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    msg.name[i] = "motor_" + std::to_string(i);
+    msg.velocity[i] = motor_telem.motor_telemetry[i].rpm() * (2.0 * M_PI / 60.0);
+    msg.effort[i] = motor_telem.motor_telemetry[i].invalid_pct() / 100.0;
+  }
+
+  motor_speed_pub_->publish(msg);
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)

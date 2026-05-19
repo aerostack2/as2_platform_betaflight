@@ -54,6 +54,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/nav_sat_status.hpp>
 #include <std_msgs/msg/u_int16_multi_array.hpp>
@@ -154,6 +155,7 @@ private:
    * @brief Callback for motor individual throttle commands
    */
   void onMotor(const msp::msg::Motor & motor);
+  void onMotorTelemetry(const msp::msg::MotorTelemetry & motor_telem);
 
   /**
    * @brief Callback for battery state
@@ -214,6 +216,7 @@ private:
   double attitude_hz_ = 0.0;
   double rc_hz_ = 0.0;
   double motor_hz_ = 0.0;
+  double motor_telemetry_hz_ = 0.0;
 
   double max_thrust_;
   double min_thrust_;
@@ -265,6 +268,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
   rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr attitude_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_motors_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr motor_speed_pub_;
   as2_msgs::msg::UInt16MultiArrayStamped debug_rc_command_;
 
   /**

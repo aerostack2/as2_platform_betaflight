@@ -16,6 +16,7 @@
     attitude_hz: 0.0  # Frequency of attitude measures publication (set to 0 to disable publication)
     rc_hz: 0.0  # Frequency of RC measures publication (set to 0 to disable publication)
     motor_hz: 0.0  # Frequency of motor individual throttles measures publication
+    motor_telemetry_hz: 0.0  # Time period (s) of motor angular speed publication (set to 0 to disable)
     alpha_voltage: 0.0  # Filter for battery voltage measurements
     min_cell_voltage: 3.7  # Security voltage level for LiPO cells (V)
     max_cell_voltage: 4.2  # Maximum cell charge (V)
