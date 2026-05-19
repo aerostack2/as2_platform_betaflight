@@ -210,7 +210,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
   if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
   if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
-  if (esc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onEsc, this, 1.0/esc_hz_);}
+  if (esc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onEsc, this, esc_hz_);}
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
@@ -476,13 +476,16 @@ void BetaflightPlatform::onEsc(const msp::msg::EscSensorData & esc)
   //   motor_rpm.push_back(data.rpm);
   //   motor_temperature.push_back(data.temperature);
   // }
-  for(int i = 0; i <= esc.motor_count-1 ; ++i)
-  {
+  for (int i = 0; i <= esc.motor_count - 1; ++i) {
     motor_rpm.push_back(esc.esc_data[i].rpm);
     motor_temperature.push_back(esc.esc_data[i].temperature);
   }
-  RCLCPP_INFO(this->get_logger(), "Motor RPM: [%i, %i, %i, %i]", motor_rpm[0], motor_rpm[1], motor_rpm[2], (motor_rpm[3]);
-  RCLCPP_INFO(this->get_logger(), "Motor Temperature: [%i, %i, %i, %i]", motor_temperature[0], motor_temperature[1], motor_temperature[2], motor_temperature[3]);
+  RCLCPP_INFO(
+    this->get_logger(), "Motor RPM: [%i, %i, %i, %i]", motor_rpm[0], motor_rpm[1], motor_rpm[2],
+    motor_rpm[3]);
+  RCLCPP_INFO(
+    this->get_logger(), "Motor Temperature: [%i, %i, %i, %i]", motor_temperature[0],
+    motor_temperature[1], motor_temperature[2], motor_temperature[3]);
 }
 
 void BetaflightPlatform::publishDebugRc()
