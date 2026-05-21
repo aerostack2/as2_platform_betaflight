@@ -17,30 +17,24 @@ endif()
 
 # MSP dependency
 find_package(msp QUIET)
-
-if(NOT msp_FOUND)
-  message(STATUS "MSP library not found, fetching...")
-
-  include(FetchContent)
-FetchContent_Declare(
-  msp
-  GIT_REPOSITORY https://github.com/CVAR-A2RL/msp.git
-  GIT_TAG 16e199d123f36676aedaa9ba51ae90474de7d7f8
-)
-
-FetchContent_GetProperties(msp)
-if(NOT msp_POPULATED)
-  FetchContent_Populate(msp)
-
-  # Patch msp.pc installation directory
-  file(READ "${msp_SOURCE_DIR}/CMakeLists.txt" MSP_CMAKE)
-  string(REPLACE "CMAKE_BINARY_DIR" "CMAKE_CURRENT_BINARY_DIR" MSP_CMAKE "${MSP_CMAKE}")
-  file(WRITE "${msp_SOURCE_DIR}/CMakeLists.txt" "${MSP_CMAKE}")
-
-  add_subdirectory(${msp_SOURCE_DIR} ${msp_BINARY_DIR})
-endif()
+if(${msp_FOUND})
+  message(STATUS "msp found system-wide")
 else()
-  message(STATUS "MSP library found")
+  set(LOCAL_MSP_SRC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/msp)
+  if(EXISTS ${LOCAL_MSP_SRC}/CMakeLists.txt)
+    message(STATUS "msp: using local clone at ${LOCAL_MSP_SRC}")
+    add_subdirectory(${LOCAL_MSP_SRC} ${CMAKE_BINARY_DIR}/msp_build)
+  else()
+    message(STATUS "msp: cloning into ${LOCAL_MSP_SRC}")
+    include(FetchContent)
+    fetchcontent_declare(
+      msp
+      GIT_REPOSITORY https://github.com/CVAR-A2RL/msp.git
+      GIT_TAG master
+      SOURCE_DIR ${LOCAL_MSP_SRC}
+    )
+    fetchcontent_makeavailable(msp)
+  endif()
 endif()
 
 # find dependencies
