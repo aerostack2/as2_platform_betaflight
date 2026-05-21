@@ -184,23 +184,54 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  if (imu_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onImu, this, imu_hz_);}
-  if (battery_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onBattery, this, battery_hz_);}
-  if (attitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAttitude, this, attitude_hz_);}
-  if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
-  if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
-  if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
+  if (imu_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onImu, this, 1.0 / imu_hz_);
+  } else {
+    RCLCPP_WARN(this->get_logger(), "IMU frequency is set to 0, IMU data will not be published");
+  }
+  if (battery_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onBattery, this, 1.0 / battery_hz_);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Battery frequency is set to 0, battery data will not be published");
+  }
+  if (attitude_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onAttitude, this, 1.0 / attitude_hz_);
+    attitude_pub_ = this->create_publisher<geometry_msgs::msg::QuaternionStamped>("attitude", 1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Attitude frequency is set to 0, attitude data will not be published");
+  }
+  if (altitude_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 1.0 / altitude_hz_);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Altitude frequency is set to 0, altitude data will not be published");
+  }
+  if (motor_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onMotor, this, 1.0 / motor_hz_);
+    debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+      "debug/motors",
+      1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Motor frequency is set to 0, motor throttle data will not be published");
+  }
+  if (rc_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onRc, this, 1.0 / rc_hz_);
+    debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+      "debug/rc/read", 1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "RC frequency is set to 0, RC data will not be published");
+  }
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/rc/command", 1);
-  debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
-    "debug/rc/read", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
-  attitude_pub_ = this->create_publisher<geometry_msgs::msg::QuaternionStamped>("attitude", 1);
-  debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
-    "debug/motors",
-    1);
+
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_command_.layout.dim.clear();
 
