@@ -16,11 +16,11 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # MSP dependency
+set(LOCAL_MSP_SRC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/msp)
 find_package(msp QUIET)
 if(${msp_FOUND})
   message(STATUS "msp found system-wide")
 else()
-  set(LOCAL_MSP_SRC ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/msp)
   if(EXISTS ${LOCAL_MSP_SRC}/CMakeLists.txt)
     message(STATUS "msp: using local clone at ${LOCAL_MSP_SRC}")
     add_subdirectory(${LOCAL_MSP_SRC} ${CMAKE_BINARY_DIR}/msp_build)
@@ -51,19 +51,6 @@ set(PROJECT_DEPENDENCIES
   nav_msgs
 )
 
-# add a submodules/msp DIRECTORY
-
-find_package(PkgConfig REQUIRED)
-pkg_search_module(PKG_MSP REQUIRED IMPORTED_TARGET msp)
-
-include_directories(${PKG_MSP_INCLUDE_DIRS})
-link_directories(${PKG_MSP_LIBRARY_DIRS})
-
-message(WARNING "PKG_MSP_INCLUDE_DIRS: ${PKG_MSP_INCLUDE_DIRS}")
-message(WARNING "PKG_MSP_LIBRARIES: ${PKG_MSP_LIBRARIES}")
-message(WARNING "PKG_MSP_LIBRARY_DIRS: ${PKG_MSP_LIBRARY_DIRS}")
-message(WARNING "PKG_MSP_LDFLAGS: ${PKG_MSP_LDFLAGS}")
-
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
   find_package(${DEPENDENCY} REQUIRED)
 endforeach()
@@ -72,7 +59,7 @@ endforeach()
 include_directories(
   include
   include/${PROJECT_NAME}
-  ${PKG_MSP_INCLUDE_DIRS}
+  ${LOCAL_MSP_SRC}/inc
 )
 
 # Set source files
@@ -86,7 +73,7 @@ add_executable(${PROJECT_NAME}_node
   ${SOURCE_CPP_FILES})
 
 target_link_libraries(${PROJECT_NAME}_node
-  ${PKG_MSP_LIBRARIES}
+  msp_fcu
 )
 
 ament_target_dependencies(${PROJECT_NAME}_node ${PROJECT_DEPENDENCIES})
@@ -94,7 +81,7 @@ ament_target_dependencies(${PROJECT_NAME}_node ${PROJECT_DEPENDENCIES})
 # # Create the library
 add_library(${PROJECT_NAME} STATIC ${SOURCE_CPP_FILES})
 ament_target_dependencies(${PROJECT_NAME} ${PROJECT_DEPENDENCIES})
-target_link_libraries(${PROJECT_NAME} ${PKG_MSP_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} msp_fcu)
 
 # Install the headers
 install(
