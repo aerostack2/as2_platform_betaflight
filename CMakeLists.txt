@@ -119,7 +119,16 @@ install(DIRECTORY
 # Build tests if testing is enabled
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+
+  # Exclude thirdparty sources from file-based linters (copyright, cpplint, uncrustify)
+  set(AMENT_LINT_AUTO_FILE_EXCLUDE thirdparty)
+
+  # lint_cmake doesn't support AMENT_LINT_AUTO_FILE_EXCLUDE; handle it manually
+  list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_lint_cmake)
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_lint_cmake REQUIRED)
+  ament_lint_cmake(CMakeLists.txt tests/CMakeLists.txt)
 
   add_subdirectory(tests)
 endif()
