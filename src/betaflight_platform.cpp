@@ -43,7 +43,6 @@
 
 #include "as2_platform_betaflight/betaflight_platform.hpp"
 #include "msp/msp_msg.hpp"
-#include "thrust_map.hpp"
 
 double convert_deg_s_to_rad_s(double deg_s)
 {
@@ -75,6 +74,7 @@ void BetaflightPlatform::readParameters()
   // Set publishers frequency. Set frequency to 0 to disable publication
   this->declare_parameter<float>("battery_hz");
   this->declare_parameter<float>("altitude_hz");
+  this->declare_parameter<float>("attitude_hz");
   this->declare_parameter<float>("rc_hz");
   this->declare_parameter<float>("motor_hz");
 
@@ -92,16 +92,6 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("thrust.max");
 
   this->declare_parameter<bool>("use_thrust_map");
-  this->declare_parameter<float>("thrust_map.a");
-  this->declare_parameter<float>("thrust_map.b");
-  this->declare_parameter<float>("thrust_map.c");
-  this->declare_parameter<float>("thrust_map.d");
-  this->declare_parameter<float>("thrust_map.e");
-  this->declare_parameter<float>("thrust_map.f");
-  this->declare_parameter<bool>("thrust_map.use_correction_factor");
-  this->declare_parameter<float>("thrust_map.gamma2");
-  this->declare_parameter<float>("thrust_map.gamma1");
-  this->declare_parameter<float>("thrust_map.gamma0");
 
   this->declare_parameter<bool>("limit_output");
   this->declare_parameter<float>("limit_roll_percent");
@@ -124,6 +114,7 @@ void BetaflightPlatform::readParameters()
 
   battery_hz_ = this->get_parameter("battery_hz").as_double();
   altitude_hz_ = this->get_parameter("altitude_hz").as_double();
+  attitude_hz_ = this->get_parameter("attitude_hz").as_double();
   rc_hz_ = this->get_parameter("rc_hz").as_double();
   motor_hz_ = this->get_parameter("motor_hz").as_double();
 
@@ -141,18 +132,6 @@ void BetaflightPlatform::readParameters()
   min_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.min").as_double());
 
   use_thrust_map_ = this->get_parameter("use_thrust_map").as_bool();
-
-  thrust_map_.set_parameters(
-    this->get_parameter("thrust_map.a").as_double(),
-    this->get_parameter("thrust_map.b").as_double(),
-    this->get_parameter("thrust_map.c").as_double(),
-    this->get_parameter("thrust_map.d").as_double(),
-    this->get_parameter("thrust_map.e").as_double(),
-    this->get_parameter("thrust_map.f").as_double(),
-    this->get_parameter("thrust_map.use_correction_factor").as_bool(),
-    this->get_parameter("thrust_map.gamma2").as_double(),
-    this->get_parameter("thrust_map.gamma1").as_double(),
-    this->get_parameter("thrust_map.gamma0").as_double());
 
   limit_output_ = this->get_parameter("limit_output").as_bool();
   limit_roll_percent_ = this->get_parameter("limit_roll_percent").as_double();
@@ -172,11 +151,6 @@ void BetaflightPlatform::readParameters()
   RCLCPP_INFO(this->get_logger(), "Yaw rate bounds: [%f, %f]", min_yaw_rate_, max_yaw_rate_);
   computeControlSlopes();
 
-
-  RCLCPP_INFO(this->get_logger(), "Using thrust map: %s", use_thrust_map_ ? "true" : "false");
-  if (use_thrust_map_) {
-    RCLCPP_INFO(this->get_logger(), "Thrust map: %s", thrust_map_.to_string().c_str());
-  }
   RCLCPP_INFO(this->get_logger(), "Limiting output: %s", limit_output_ ? "true" : "false");
   if (limit_output_) {
     RCLCPP_INFO(this->get_logger(), "Roll limit: %f", limit_roll_percent_);
@@ -188,11 +162,18 @@ void BetaflightPlatform::readParameters()
 
 
 BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
-: as2::AerialPlatform(options), thrust_map_(4)    // TODO(miferco97) hardcoded number of motors
+: as2::AerialPlatform(options), thrust_map_(4)
 {
   readParameters();
   configureSensors();
   initChannels();
+  if (use_thrust_map_) {
+    thrust_map_.initialize(this);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Thrust map disabled. Thrust will be mapped directly to throttle.");
+  }
 
   auto out = fcu_.connect(device_, baudrate_, 0.0, true);
   if (!out) {
@@ -203,21 +184,54 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
-  if (imu_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onImu, this, imu_hz_);}
-  if (battery_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onBattery, this, battery_hz_);}
-  if (altitude_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onAltitude, this, altitude_hz_);}
-  if (motor_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onMotor, this, motor_hz_);}
-  if (rc_hz_ > 0.0) {fcu_.subscribe(&BetaflightPlatform::onRc, this, rc_hz_);}
+  if (imu_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onImu, this, 1.0 / imu_hz_);
+  } else {
+    RCLCPP_WARN(this->get_logger(), "IMU frequency is set to 0, IMU data will not be published");
+  }
+  if (battery_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onBattery, this, 1.0 / battery_hz_);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Battery frequency is set to 0, battery data will not be published");
+  }
+  if (attitude_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onAttitude, this, 1.0 / attitude_hz_);
+    attitude_pub_ = this->create_publisher<geometry_msgs::msg::QuaternionStamped>("attitude", 1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Attitude frequency is set to 0, attitude data will not be published");
+  }
+  if (altitude_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onAltitude, this, 1.0 / altitude_hz_);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "Altitude frequency is set to 0, altitude data will not be published");
+  }
+  if (motor_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onMotor, this, 1.0 / motor_hz_);
+    debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+      "debug/motors",
+      1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Motor frequency is set to 0, motor throttle data will not be published");
+  }
+  if (rc_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onRc, this, 1.0 / rc_hz_);
+    debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
+      "debug/rc/read", 1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(), "RC frequency is set to 0, RC data will not be published");
+  }
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/rc/command", 1);
-  debug_rc_read_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
-    "debug/rc/read", 1);
   raw_imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("raw_imu", 1);
-  debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
-    "debug/motors",
-    1);
+
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_command_.layout.dim.clear();
 
@@ -250,7 +264,6 @@ bool BetaflightPlatform::ownSetArmingState(bool state)
 
 bool BetaflightPlatform::ownSetOffboardControl(bool offboard)
 {
-  // TODO(miferco97): check if this is correct
   return true;
 }
 
@@ -366,7 +379,7 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 
   // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
   // const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
-  const double acc_1G = 512.0f * 4.0f;
+  const double acc_1G = 512.0f;
   const double gyro_scale = 1.0f / 16.0f;
   const msp::msg::ImuSI imu_si(imu, acc_1G, gyro_scale, 0.092, 9.80665);
 
@@ -409,6 +422,28 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 void BetaflightPlatform::onAltitude(const msp::msg::Altitude & altitude)
 {
   std::cout << "Altitude: " << altitude << std::endl;
+}
+
+void BetaflightPlatform::onAttitude(const msp::msg::Attitude & attitude)
+{
+  geometry_msgs::msg::QuaternionStamped attitude_msg;
+  attitude_msg.header.stamp = this->get_clock()->now();
+  attitude_msg.header.frame_id = odom_frame_id_;
+  // print attitude
+  RCLCPP_INFO(
+    this->get_logger(), "Attitude: roll: %f, pitch: %f, yaw: %f",
+    static_cast<double>(attitude.roll),
+    static_cast<double>(attitude.pitch),
+    static_cast<double>(attitude.yaw));
+
+  // Convert Euler angles (degrees) to quaternion
+  double roll_rad = attitude.roll * M_PI / 180.0;
+  double pitch_rad = attitude.pitch * M_PI / 180.0;
+  double yaw_rad = attitude.yaw * M_PI / 180.0;
+
+  as2::frame::eulerToQuaternion(roll_rad, pitch_rad, yaw_rad, attitude_msg.quaternion);
+
+  attitude_pub_->publish(attitude_msg);
 }
 
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
@@ -475,7 +510,6 @@ void BetaflightPlatform::publishDebugRc()
 
 void BetaflightPlatform::rcArm(int channel)
 {
-  // RCLCPP_INFO(this->get_logger(), "Reading ARM channel...\n");
   if (channel > 1500) {
     if (!set_arm_) {
       RCLCPP_INFO(this->get_logger(), "ARM received, arming...\n");
@@ -493,7 +527,6 @@ void BetaflightPlatform::rcArm(int channel)
 
 void BetaflightPlatform::rcOffboard(int channel)
 {
-  // RCLCPP_INFO(this->get_logger(), "Reading OFFBOARD channel...\n");
   if (channel > 1500) {
     if (!set_offboard_) {
       RCLCPP_INFO(this->get_logger(), "OFFBOARD received, offboard ON...\n");

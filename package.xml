@@ -11,7 +11,6 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>ament_cmake</depend>
-  <depend>msp</depend>
   <depend>rclcpp</depend>
   <depend>as2_core</depend>
   <depend>std_msgs</depend>

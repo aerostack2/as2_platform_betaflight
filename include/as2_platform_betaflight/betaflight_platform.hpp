@@ -50,6 +50,7 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -62,7 +63,8 @@
 #include "as2_core/sensor.hpp"
 #include "as2_core/utils/tf_utils.hpp"
 #include "as2_core/synchronous_service_client.hpp"
-#include "as2_platform_betaflight/thrust_map.hpp"
+#include "as2_core/polynomial_thrust_map.hpp"
+#include "as2_core/utils/frame_utils.hpp"
 
 #include <msp/FlightController.hpp>
 #include <msp/msp_msg.hpp>
@@ -72,6 +74,11 @@
 namespace as2_platform_betaflight
 {
 
+/**
+ * @brief Enumeration of RC channel indices
+ *
+ * Defines the mapping between logical control inputs and RC channel indices.
+ */
 enum RC_CHANNELS
 {
   ROLL = 0,
@@ -84,7 +91,6 @@ enum RC_CHANNELS
   AUX4 = 7,
   AUX5 = 8
 };
-
 
 class BetaflightPlatform : public as2::AerialPlatform
 {
@@ -119,12 +125,44 @@ private:
   int baudrate_ = 115200;
 
   fcu::FlightController fcu_;
+  /**
+   * @brief Callback for FCU status messages
+   */
   void onStatus(const msp::msg::Status & status);
+
+  /**
+   * @brief Callback for FCU box names
+   */
   void onBoxNames(const msp::msg::BoxNames & box_names);
+
+  /**
+   * @brief Callback for raw IMU data
+   */
   void onImu(const msp::msg::RawImu & imu);
+
+  /**
+   * @brief Callback for altitude data
+   */
   void onAltitude(const msp::msg::Altitude & altitude);
+
+  /**
+   * @brief Callback for attitude data
+   */
+  void onAttitude(const msp::msg::Attitude & attitude);
+
+  /**
+   * @brief Callback for motor individual throttle commands
+   */
   void onMotor(const msp::msg::Motor & motor);
+
+  /**
+   * @brief Callback for battery state
+   */
   void onBattery(const msp::msg::BatteryState & battery);
+
+  /**
+   * @brief Callback for RC reads from the controller
+   */
   void onRc(const msp::msg::Rc & rc);
 
   void computeControlSlopes()
@@ -143,7 +181,7 @@ private:
 
   std::atomic<uint64_t> timestamp_;
   std::vector<uint16_t> channel_values_;
-  ThrustMap thrust_map_;
+  as2::PolynomialThrustMap thrust_map_;
 
   void initChannels()
   {
@@ -173,6 +211,7 @@ private:
 
   double battery_hz_ = 0.0;
   double altitude_hz_ = 0.0;
+  double attitude_hz_ = 0.0;
   double rc_hz_ = 0.0;
   double motor_hz_ = 0.0;
 
@@ -224,11 +263,27 @@ private:
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_command_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_rc_read_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr raw_imu_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr attitude_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_motors_pub_;
   as2_msgs::msg::UInt16MultiArrayStamped debug_rc_command_;
 
+  /**
+   * @brief Publish debug RC data
+   */
   void publishDebugRc();
+
+  /**
+   * @brief Set RC arm channel
+   *
+   * @param arm Arm value
+   */
   void rcArm(int arm);
+
+  /**
+   * @brief Set RC offboard channel
+   *
+   * @param offboard Offboard value
+   */
   void rcOffboard(int offboard);
 };
 
