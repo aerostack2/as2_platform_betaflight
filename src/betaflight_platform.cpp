@@ -228,6 +228,16 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
     RCLCPP_WARN(
       this->get_logger(), "RC frequency is set to 0, RC data will not be published");
   }
+  if (motor_telemetry_hz_ > 0.0) {
+    fcu_.subscribe(&BetaflightPlatform::onMotorTelemetry, this, 1.0 / motor_telemetry_hz_);
+    motor_speed_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
+      "sensor_measurements/motor_telemetry",
+      1);
+  } else {
+    RCLCPP_WARN(
+      this->get_logger(),
+      "Motor telemetry frequency is set to 0, motor telemetry data will not be published");
+  }
   box_names_ = fcu_.getBoxNames();
 
   debug_rc_command_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
@@ -237,7 +247,6 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   debug_motors_pub_ = this->create_publisher<as2_msgs::msg::UInt16MultiArrayStamped>(
     "debug/motors",
     1);
-  motor_speed_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("motor_speed", 1);
   // Clear layout dimensions if they were set in a previous publication
   debug_rc_command_.layout.dim.clear();
 
