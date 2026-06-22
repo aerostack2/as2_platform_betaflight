@@ -30,7 +30,7 @@ else()
     fetchcontent_declare(
       msp
       GIT_REPOSITORY https://github.com/CVAR-A2RL/msp.git
-      GIT_TAG master
+      GIT_TAG read-motor-speed
       SOURCE_DIR ${LOCAL_MSP_SRC}
     )
     fetchcontent_makeavailable(msp)
