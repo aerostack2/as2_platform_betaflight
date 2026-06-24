@@ -369,7 +369,10 @@ void BetaflightPlatform::ownStopPlatform() {RCLCPP_WARN(this->get_logger(), "NOT
 
 void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 {
-  if (!status.isHealthy()) {
+  // Betaflight never sets the GeneralHealth bit (bit 15) in the sensor flags,
+  // so status.isHealthy() is always false. Check SENSOR_ACC (bit 0) instead:
+  // Betaflight reports this bit whenever the IMU accelerometer is initialised.
+  if (!status.hasAccelerometer()) {
     RCLCPP_WARN(this->get_logger(), "Flight controller is not healthy");
   }
 }
