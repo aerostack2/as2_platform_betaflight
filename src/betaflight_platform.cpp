@@ -467,7 +467,7 @@ void BetaflightPlatform::onAttitude(const msp::msg::Attitude & attitude)
 void BetaflightPlatform::onMotor(const msp::msg::Motor & motor)
 {
   as2_msgs::msg::UInt16MultiArrayStamped debug_motor_msg;
-  debug_motor_msg.layout.dim.reserve(1);
+  debug_motor_msg.layout.dim.resize(1);
   debug_motor_msg.layout.dim[0].size = motor.motor.size();
   debug_motor_msg.data.reserve(motor.motor.size());
 
@@ -521,7 +521,7 @@ void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)
 void BetaflightPlatform::onRc(const msp::msg::Rc & rc)
 {
   as2_msgs::msg::UInt16MultiArrayStamped debug_rc_msg;
-  debug_rc_msg.layout.dim.reserve(1);
+  debug_rc_msg.layout.dim.resize(1);
   debug_rc_msg.layout.dim[0].size = rc.channels.size();
   debug_rc_msg.data.reserve(rc.channels.size());
 
