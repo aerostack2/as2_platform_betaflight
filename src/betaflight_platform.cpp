@@ -78,6 +78,7 @@ void BetaflightPlatform::readParameters()
   this->declare_parameter<float>("rc_hz");
   this->declare_parameter<float>("motor_hz");
   this->declare_parameter<float>("motor_telemetry_hz");
+  this->declare_parameter<bool>("debug.motor_power");
 
   this->declare_parameter<float>("alpha_voltage");
   this->declare_parameter<float>("min_cell_voltage");
@@ -119,6 +120,7 @@ void BetaflightPlatform::readParameters()
   rc_hz_ = this->get_parameter("rc_hz").as_double();
   motor_hz_ = this->get_parameter("motor_hz").as_double();
   motor_telemetry_hz_ = this->get_parameter("motor_telemetry_hz").as_double();
+  publish_motor_power_ = this->get_parameter("debug.motor_power").as_bool();
 
   alpha_voltage_ = this->get_parameter("alpha_voltage").as_double();
   min_cell_voltage_ = this->get_parameter("min_cell_voltage").as_double();
@@ -203,6 +205,10 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
   if (motor_telemetry_hz_ > 0.0) {
     motor_speed_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
       "sensor_measurements/motor_telemetry", 1);
+    if (publish_motor_power_) {
+      motor_power_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
+        "debug/motor_power", 1);
+    }
   }
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
@@ -493,13 +499,26 @@ void BetaflightPlatform::onMotorTelemetry(const msp::msg::MotorTelemetry & motor
   msg.velocity.resize(n);
   msg.effort.resize(n);
 
+  sensor_msgs::msg::JointState power_msg;
+  power_msg.header = msg.header;
+  power_msg.name.resize(n);
+  power_msg.position.resize(n);  // voltage (V)
+  power_msg.effort.resize(n);    // current (A)
+
   for (size_t i = 0; i < n; ++i) {
     msg.name[i] = "motor_" + std::to_string(i);
     msg.velocity[i] = motor_telem.motor_telemetry[i].rpm() * (2.0 * M_PI / 60.0);
     msg.effort[i] = motor_telem.motor_telemetry[i].invalid_pct() / 100.0;
+
+    power_msg.name[i]     = "motor_" + std::to_string(i);
+    power_msg.position[i] = motor_telem.motor_telemetry[i].voltage() * 0.01;  // 0.01V → V
+    power_msg.effort[i]   = motor_telem.motor_telemetry[i].current() * 0.01;  // 0.01A → A
   }
 
   motor_speed_pub_->publish(msg);
+  if (publish_motor_power_) {
+    motor_power_pub_->publish(power_msg);
+  }
 }
 
 void BetaflightPlatform::onBattery(const msp::msg::BatteryState & battery)

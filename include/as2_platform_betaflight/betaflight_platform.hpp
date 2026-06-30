@@ -217,6 +217,7 @@ private:
   double rc_hz_ = 0.0;
   double motor_hz_ = 0.0;
   double motor_telemetry_hz_ = 0.0;
+  bool publish_motor_power_ = false;
 
   double max_thrust_;
   double min_thrust_;
@@ -269,6 +270,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::QuaternionStamped>::SharedPtr attitude_pub_;
   rclcpp::Publisher<as2_msgs::msg::UInt16MultiArrayStamped>::SharedPtr debug_motors_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr motor_speed_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr motor_power_pub_;
   as2_msgs::msg::UInt16MultiArrayStamped debug_rc_command_;
 
   /**
