@@ -95,28 +95,78 @@ enum RC_CHANNELS
 class BetaflightPlatform : public as2::AerialPlatform
 {
 public:
+  /**
+   * @brief Construct the Betaflight platform, opening the MSP serial link.
+   *
+   * @param options Node options.
+   */
   explicit BetaflightPlatform(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  /**
+   * @brief Destroy the Betaflight Platform object, closing the serial link.
+   */
   ~BetaflightPlatform()
   {
     fcu_.disconnect();
   }
 
 public:
+  /**
+   * @brief Create the sensor interfaces the platform publishes.
+   */
   void configureSensors() override;
+  /**
+   * @brief Publish the sensor measurements read over MSP.
+   */
   void publishSensorData();
+  /**
+   * @brief Declare and read the platform parameters.
+   */
   void readParameters();
 
+  /**
+   * @brief Arm or disarm the vehicle.
+   *
+   * @param state True to arm, false to disarm.
+   * @return true if the vehicle accepted the request.
+   */
   bool ownSetArmingState(bool state) override;
+  /**
+   * @brief Enter or leave offboard control.
+   *
+   * @param offboard True to take control, false to release it.
+   * @return true if the vehicle accepted the request.
+   */
   bool ownSetOffboardControl(bool offboard) override;
+  /**
+   * @brief Accept a control mode requested through the platform interface.
+   *
+   * @param msg Requested control mode.
+   * @return true if the platform accepts the mode.
+   */
   bool ownSetPlatformControlMode(const as2_msgs::msg::ControlMode & msg) override;
+  /**
+   * @brief Send the RC channels to the flight controller, keeping the link
+   * alive even while the platform is not sending references.
+   */
   void sendCommand() override
   {
     if (true) {
       ownSendCommand();
     }
   }
+  /**
+   * @brief Send the current actuator commands to the vehicle.
+   *
+   * @return true if the command was sent.
+   */
   bool ownSendCommand() override;
+  /**
+   * @brief Stop the motors immediately, without landing.
+   */
   void ownKillSwitch() override;
+  /**
+   * @brief Hold the vehicle in place with a zero setpoint.
+   */
   void ownStopPlatform() override;
 
 private:
@@ -165,6 +215,9 @@ private:
    */
   void onRc(const msp::msg::Rc & rc);
 
+  /**
+   * @brief Precompute the linear maps from commands to RC channel values.
+   */
   void computeControlSlopes()
   {
     roll_slope_ = (max_roll_rate_ - min_roll_rate_) / static_cast<double>(PULSE_RANGE);
@@ -183,6 +236,9 @@ private:
   std::vector<uint16_t> channel_values_;
   as2::PolynomialThrustMap thrust_map_;
 
+  /**
+   * @brief Set every RC channel to its neutral value.
+   */
   void initChannels()
   {
     // channels are :
