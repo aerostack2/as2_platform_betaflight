@@ -61,90 +61,56 @@ namespace as2_platform_betaflight
 
 void BetaflightPlatform::readParameters()
 {
-  this->declare_parameter<std::string>("device");
-  this->declare_parameter<int>("baudrate");
-  this->declare_parameter<bool>("external_odom");
-
   // IMU config parameters
-  this->declare_parameter<float>("imu.frequency");
-  this->declare_parameter<float>("imu.covariance.gyro");
-  this->declare_parameter<float>("imu.covariance.accel");
-  this->declare_parameter<float>("imu.covariance.orientation");
 
   // Set publishers frequency. Set frequency to 0 to disable publication
-  this->declare_parameter<float>("battery_hz");
-  this->declare_parameter<float>("altitude_hz");
-  this->declare_parameter<float>("attitude_hz");
-  this->declare_parameter<float>("rc_hz");
-  this->declare_parameter<float>("motor_hz");
-
-  this->declare_parameter<float>("alpha_voltage");
-  this->declare_parameter<float>("min_cell_voltage");
-  this->declare_parameter<float>("max_cell_voltage");
-
-  this->declare_parameter<float>("yaw_rate.min");
-  this->declare_parameter<float>("yaw_rate.max");
-  this->declare_parameter<float>("pitch_rate.min");
-  this->declare_parameter<float>("pitch_rate.max");
-  this->declare_parameter<float>("roll_rate.min");
-  this->declare_parameter<float>("roll_rate.max");
-  this->declare_parameter<float>("thrust.min");
-  this->declare_parameter<float>("thrust.max");
-
-  this->declare_parameter<bool>("use_thrust_map");
-
-  this->declare_parameter<bool>("limit_output");
-  this->declare_parameter<float>("limit_roll_percent");
-  this->declare_parameter<float>("limit_pitch_percent");
-  this->declare_parameter<float>("limit_yaw_percent");
-  this->declare_parameter<float>("limit_thrust_percent");
 
 
   base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
   odom_frame_id_ = as2::tf::generateTfName(this, "odom");
 
-  device_ = this->get_parameter("device").as_string();
-  baudrate_ = this->get_parameter("baudrate").as_int();
-  external_odom_ = this->get_parameter("external_odom").as_bool();
+  device_ = this->getParameter<std::string>("device");
+  baudrate_ = this->getParameter<int>("baudrate");
+  external_odom_ = this->getParameter<bool>("external_odom");
 
-  imu_hz_ = this->get_parameter("imu.frequency").as_double();
-  imu_gyro_covariance_ = this->get_parameter("imu.covariance.gyro").as_double();
-  imu_accel_covariance_ = this->get_parameter("imu.covariance.accel").as_double();
-  imu_orientation_covariance_ = this->get_parameter("imu.covariance.orientation").as_double();
+  imu_hz_ = this->getParameter<double>("imu.frequency");
+  imu_gyro_covariance_ = this->getParameter<double>("imu.covariance.gyro");
+  imu_accel_covariance_ = this->getParameter<double>("imu.covariance.accel");
+  imu_orientation_covariance_ = this->getParameter<double>("imu.covariance.orientation");
 
-  battery_hz_ = this->get_parameter("battery_hz").as_double();
-  altitude_hz_ = this->get_parameter("altitude_hz").as_double();
-  attitude_hz_ = this->get_parameter("attitude_hz").as_double();
-  rc_hz_ = this->get_parameter("rc_hz").as_double();
-  motor_hz_ = this->get_parameter("motor_hz").as_double();
+  battery_hz_ = this->getParameter<double>("battery_hz");
+  altitude_hz_ = this->getParameter<double>("altitude_hz");
+  attitude_hz_ = this->getParameter<double>("attitude_hz");
+  rc_hz_ = this->getParameter<double>("rc_hz");
+  motor_hz_ = this->getParameter<double>("motor_hz");
 
-  alpha_voltage_ = this->get_parameter("alpha_voltage").as_double();
-  min_cell_voltage_ = this->get_parameter("min_cell_voltage").as_double();
-  max_cell_voltage_ = this->get_parameter("max_cell_voltage").as_double();
+  alpha_voltage_ = this->getParameter<double>("alpha_voltage");
+  min_cell_voltage_ = this->getParameter<double>("min_cell_voltage");
+  max_cell_voltage_ = this->getParameter<double>("max_cell_voltage");
 
-  max_thrust_ = this->get_parameter("thrust.max").as_double();
-  min_thrust_ = this->get_parameter("thrust.min").as_double();
-  max_pitch_rate_ = convert_deg_s_to_rad_s(this->get_parameter("pitch_rate.max").as_double());
-  min_pitch_rate_ = convert_deg_s_to_rad_s(this->get_parameter("pitch_rate.min").as_double());
-  max_roll_rate_ = convert_deg_s_to_rad_s(this->get_parameter("roll_rate.max").as_double());
-  min_roll_rate_ = convert_deg_s_to_rad_s(this->get_parameter("roll_rate.min").as_double());
-  max_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.max").as_double());
-  min_yaw_rate_ = convert_deg_s_to_rad_s(this->get_parameter("yaw_rate.min").as_double());
+  max_thrust_ = this->getParameter<double>("thrust.max");
+  min_thrust_ = this->getParameter<double>("thrust.min");
+  max_pitch_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("pitch_rate.max"));
+  min_pitch_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("pitch_rate.min"));
+  max_roll_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("roll_rate.max"));
+  min_roll_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("roll_rate.min"));
+  max_yaw_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("yaw_rate.max"));
+  min_yaw_rate_ = convert_deg_s_to_rad_s(this->getParameter<double>("yaw_rate.min"));
 
-  use_thrust_map_ = this->get_parameter("use_thrust_map").as_bool();
+  use_thrust_map_ = this->getParameter<bool>("use_thrust_map");
 
-  limit_output_ = this->get_parameter("limit_output").as_bool();
-  limit_roll_percent_ = this->get_parameter("limit_roll_percent").as_double();
-  limit_pitch_percent_ = this->get_parameter("limit_pitch_percent").as_double();
-  limit_yaw_percent_ = this->get_parameter("limit_yaw_percent").as_double();
-  limit_thrust_percent_ = this->get_parameter("limit_thrust_percent").as_double();
+  limit_output_ = this->getParameter<bool>("limit_output");
+  limit_roll_percent_ = this->getParameter<double>("limit_roll_percent");
+  limit_pitch_percent_ = this->getParameter<double>("limit_pitch_percent");
+  limit_yaw_percent_ = this->getParameter<double>("limit_yaw_percent");
+  limit_thrust_percent_ = this->getParameter<double>("limit_thrust_percent");
 
   RCLCPP_INFO(this->get_logger(), "Device: %s", device_.c_str());
   RCLCPP_INFO(this->get_logger(), "Baudrate: %d", baudrate_);
   RCLCPP_INFO(this->get_logger(), "External odometry mode: %s", external_odom_ ? "true" : "false");
   RCLCPP_INFO(
     this->get_logger(), "Simulation mode: %s",
-    this->get_parameter("use_sim_time").as_bool() ? "true" : "false");
+    this->getParameter<bool>("use_sim_time") ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "Thrust bounds: [%f, %f]", min_thrust_, max_thrust_);
   RCLCPP_INFO(this->get_logger(), "Pitch rate bounds: [%f, %f]", min_pitch_rate_, max_pitch_rate_);
   RCLCPP_INFO(this->get_logger(), "Roll rate bounds: [%f, %f]", min_roll_rate_, max_roll_rate_);
