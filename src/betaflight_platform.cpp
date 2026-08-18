@@ -66,8 +66,8 @@ void BetaflightPlatform::readParameters()
   // Set publishers frequency. Set frequency to 0 to disable publication
 
 
-  base_link_frame_id_ = as2::tf::generateTfName(this, "base_link");
-  odom_frame_id_ = as2::tf::generateTfName(this, "odom");
+  base_link_frame_id_ = this->getBaseFrameId();
+  odom_frame_id_ = this->getOdomFrameId();
 
   device_ = this->getParameter<std::string>("device");
   baudrate_ = this->getParameter<int>("baudrate");
