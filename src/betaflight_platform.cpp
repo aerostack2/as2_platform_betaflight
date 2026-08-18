@@ -235,8 +235,8 @@ bool BetaflightPlatform::ownSetOffboardControl(bool offboard)
 
 bool BetaflightPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlMode & msg)
 {
-  // ONLY SUPPORTS ACRO MODE
-  if (msg.control_mode != as2_msgs::msg::ControlMode::ACRO) {
+  // ONLY SUPPORTS BODY_RATES MODE
+  if (msg.control_mode != as2_msgs::msg::ControlMode::BODY_RATES) {
     RCLCPP_WARN(this->get_logger(), "CONTROL MODE %d NOT SUPPORTED", msg.control_mode);
     return false;
   }
@@ -245,7 +245,7 @@ bool BetaflightPlatform::ownSetPlatformControlMode(const as2_msgs::msg::ControlM
 
 bool BetaflightPlatform::ownSendCommand()
 {
-  // ONLY ACRO MODE IS SUPPORTED
+  // ONLY BODY_RATES MODE IS SUPPORTED
 
   double thrust = this->command_thrust_msg_.thrust;
   double roll = this->command_twist_msg_.twist.angular.x;
