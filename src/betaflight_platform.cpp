@@ -77,6 +77,8 @@ void BetaflightPlatform::readParameters()
   imu_gyro_covariance_ = this->getParameter<double>("imu.covariance.gyro");
   imu_accel_covariance_ = this->getParameter<double>("imu.covariance.accel");
   imu_orientation_covariance_ = this->getParameter<double>("imu.covariance.orientation");
+  imu_acc_1g_ = this->getParameter<double>("imu.acc_1g", 0.0);
+  imu_gyro_scale_ = this->getParameter<double>("imu.gyro_scale", kRawImuGyroScale);
 
   battery_hz_ = this->getParameter<double>("battery_hz");
   altitude_hz_ = this->getParameter<double>("altitude_hz");
@@ -147,6 +149,7 @@ BetaflightPlatform::BetaflightPlatform(const rclcpp::NodeOptions & options)
     throw std::runtime_error("Could not connect to device");
   }
   fcu_.setLoggingLevel(msp::client::LoggingLevel::INFO);
+  readFirmwareInfo();
   fcu_.setControlSource(fcu::ControlSource::MSP);
 
   fcu_.subscribe(&BetaflightPlatform::onStatus, this, 1);
@@ -318,6 +321,46 @@ void BetaflightPlatform::ownKillSwitch()
 
 void BetaflightPlatform::ownStopPlatform() {RCLCPP_WARN(this->get_logger(), "NOT IMPLEMENTED");}
 
+void BetaflightPlatform::readFirmwareInfo()
+{
+  msp::msg::FcVariant variant(fcu_.getFwVariant());
+  msp::msg::FcVersion version(fcu_.getFwVariant());
+  msp::msg::ApiVersion api(fcu_.getFwVariant());
+
+  if (fcu_.sendMessage(variant, 1.0) && fcu_.sendMessage(version, 1.0)) {
+    RCLCPP_INFO(
+      this->get_logger(), "Firmware: %s %s", variant.identifier().c_str(),
+      firmwareVersionString(version.major(), version.minor(), version.patch_level()).c_str());
+  }
+  if (fcu_.getFwVariant() != msp::FirmwareVariant::BTFL) {
+    RCLCPP_WARN(this->get_logger(), "Flight controller firmware is not Betaflight");
+  }
+
+  int api_version = 0;
+  if (fcu_.sendMessage(api, 1.0)) {
+    api_version = api.major() * 1000 + api.minor();
+    RCLCPP_INFO(this->get_logger(), "MSP API: %d.%d", api.major(), api.minor());
+    if (api_version > kMspApiNewestSupported) {
+      RCLCPP_WARN(
+        this->get_logger(),
+        "MSP API %d.%d is newer than the newest checked (1.%d): check the IMU scale",
+        api.major(), api.minor(), kMspApiNewestSupported - 1000);
+    }
+  } else {
+    RCLCPP_WARN(this->get_logger(), "Could not read the MSP API version");
+  }
+
+  if (imu_acc_1g_ <= 0.0) {
+    if (api_version == 0) {
+      api_version = kMspApiNewestSupported;
+    }
+    imu_acc_1g_ = rawImuAcc1G(api_version);
+  }
+  RCLCPP_INFO(
+    this->get_logger(), "IMU scale: 1 g = %.0f, gyro %f deg/s per LSB", imu_acc_1g_,
+    imu_gyro_scale_);
+}
+
 void BetaflightPlatform::onStatus(const msp::msg::Status & status)
 {
   if (!status.isHealthy()) {
@@ -343,11 +386,7 @@ void BetaflightPlatform::onImu(const msp::msg::RawImu & imu)
 
   raw_imu_pub_->publish(imu_raw);
 
-  // from Betaflight MPU6000 drivers init: acc_1G = 512.0 * 4
-  // const msp::msg::ImuSI imu_si(imu, 512.0 * 4, 1.0 / 4.096, 0.092, 9.80665);
-  const double acc_1G = 512.0f;
-  const double gyro_scale = 1.0f / 16.0f;
-  const msp::msg::ImuSI imu_si(imu, acc_1G, gyro_scale, 0.092, 9.80665);
+  const msp::msg::ImuSI imu_si(imu, imu_acc_1g_, imu_gyro_scale_, 0.092, 9.80665);
 
   // raw imu data without orientation
   sensor_msgs::msg::Imu imu_msg;

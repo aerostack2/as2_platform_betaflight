@@ -11,6 +11,8 @@
         gyro: 0.0  # IMU gyroscope mean noise (set to 0 for not calibrated)
         accel: 0.0  # IMU accelerometer mean noise (set to 0 for not calibrated)
         orientation: 0.0 # IMU orientation mean noise (set to 0 for not calibrated)
+      acc_1g: 0.0  # MSP_RAW_IMU accelerometer reading at 1 g (0 selects it from the MSP API version)
+      gyro_scale: 0.06103515625  # MSP_RAW_IMU gyro resolution in deg/s per LSB (2000 deg/s sensor)
     battery_hz: 0.0  # Frequency of battery measures publication
     altitude_hz: 0.0  # Frequency of altitude measures publication (set to 0 to disable publication)
     attitude_hz: 0.0  # Frequency of attitude measures publication (set to 0 to disable publication)

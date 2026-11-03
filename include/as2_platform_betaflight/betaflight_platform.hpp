@@ -74,6 +74,46 @@
 namespace as2_platform_betaflight
 {
 
+/// MSP API version of Betaflight 4.5, the first that sends MSP_RAW_IMU acceleration unscaled.
+constexpr int kMspApiRawAccUnscaled = 1046;
+
+/// Newest MSP API version this platform has been checked against (Betaflight 2026.6).
+constexpr int kMspApiNewestSupported = 1048;
+
+/// Gyro resolution of MSP_RAW_IMU in deg/s per LSB: raw counts of a 2000 deg/s sensor.
+constexpr double kRawImuGyroScale = 2000.0 / 32768.0;
+
+/**
+ * @brief Accelerometer reading at 1 g in MSP_RAW_IMU.
+ *
+ * Up to Betaflight 4.4 (MSP API 1.45) the reading is rescaled so that 1 g is 512.
+ * From Betaflight 4.5 on it is the raw sensor value, where 1 g is 2048 for the
+ * supported 16 g accelerometers.
+ *
+ * @param api_version MSP API version as major * 1000 + minor (1.46 is 1046).
+ * @return Accelerometer reading at 1 g.
+ */
+inline double rawImuAcc1G(int api_version)
+{
+  return api_version < kMspApiRawAccUnscaled ? 512.0 : 2048.0;
+}
+
+/**
+ * @brief Firmware version as printed by Betaflight.
+ *
+ * MSP_FC_VERSION reports the year since 2000 from 2025.12 on (26.6.2 for 2026.6.2).
+ *
+ * @param major Major version, or year since 2000.
+ * @param minor Minor version, or month.
+ * @param patch Patch level.
+ * @return Version string, such as "4.5.2" or "2026.6.2".
+ */
+inline std::string firmwareVersionString(int major, int minor, int patch)
+{
+  const int year = major >= 25 ? 2000 + major : major;
+  return std::to_string(year) + "." + std::to_string(minor) + "." + std::to_string(patch);
+}
+
 /**
  * @brief Enumeration of RC channel indices
  *
@@ -175,6 +215,12 @@ private:
   int baudrate_ = 115200;
 
   fcu::FlightController fcu_;
+
+  /**
+   * @brief Query the firmware and MSP API versions and set the IMU scale from them.
+   */
+  void readFirmwareInfo();
+
   /**
    * @brief Callback for FCU status messages
    */
@@ -264,6 +310,8 @@ private:
   double imu_gyro_covariance_ = 0.0;
   double imu_accel_covariance_ = 0.0;
   double imu_orientation_covariance_ = 0.0;
+  double imu_acc_1g_ = 0.0;  // 0 selects it from the MSP API version
+  double imu_gyro_scale_ = kRawImuGyroScale;
 
   double battery_hz_ = 0.0;
   double altitude_hz_ = 0.0;
