@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.5)
 set(PROJECT_NAME as2_platform_betaflight)
 project(${PROJECT_NAME})
 
-# Default to C++17
+# Default to C++17 (required by rclcpp from Jazzy on)
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -30,9 +30,11 @@ else()
     fetchcontent_declare(
       msp
       GIT_REPOSITORY https://github.com/CVAR-A2RL/msp.git
-      GIT_TAG master
+      # Pinned for reproducible builds: master as of 2026-05-21.
+      GIT_TAG 5c0437fea512c3effe31ee97a65c619fb8f789a9
       SOURCE_DIR ${LOCAL_MSP_SRC}
     )
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     fetchcontent_makeavailable(msp)
   endif()
 endif()
