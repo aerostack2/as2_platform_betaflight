@@ -10,3 +10,7 @@ compile_commands.json
 neovim.json
 *.zip
 *.tar
+
+
+# pixi environments
+.pixi/
